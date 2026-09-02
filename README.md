@@ -13,10 +13,21 @@ A TypeScript/Express/Prisma/PostgreSQL API lives at the repo root:
   control, and refresh-token rotation with reuse detection.
 - `src/repositories/`, `src/validation/`, `src/middleware/` — the
   repository pattern and Zod request validation.
-- `src/routes/` — the HTTP surface: auth, member profiles, workout logs,
-  workout sessions, and RBAC-guarded example routes.
+- `src/routes/` — the HTTP surface: auth, member profiles, workout logs
+  and sessions, goals, streaks, nutrition logs, coach assignments, gyms
+  and check-ins, admin user management, and RBAC-guarded example routes.
+- `openapi/openapi.yaml` — the spec for everything above, validated with
+  `@apidevtools/swagger-parser`.
 - `docs/artifacts/` — every original design/spec/code artifact, preserved
   verbatim, that this backend was consolidated from.
+
+Every list/create/update/delete endpoint scoped to a member (goals,
+nutrition logs, workout logs, gym check-ins) follows the same rule: a
+plain user can only ever act on their own rows; ADMIN can act on anyone's;
+COACH can act on their own and, where it makes product sense (viewing
+logs, listing clients), on their clients'. A resource id that exists but
+isn't the caller's returns 404, never 403 — existence is never disclosed
+to a caller with no relationship to it.
 
 ### Running locally
 
