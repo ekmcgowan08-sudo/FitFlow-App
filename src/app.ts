@@ -9,6 +9,8 @@ import authRoutes from './auth/auth.routes';
 import userRoutes from './routes/user.routes';
 import memberRoutes from './routes/member.routes';
 import workoutLogRoutes from './routes/workout-log.routes';
+import goalRoutes from './routes/goal.routes';
+import streakRoutes from './routes/streak.routes';
 import rbacExampleRoutes from './routes/rbac-examples.routes';
 import { errorHandler } from './lib/errors';
 
@@ -39,6 +41,8 @@ export function createApp(): Express {
   protectedRoutes.use(userRoutes);
   protectedRoutes.use(memberRoutes);
   protectedRoutes.use(workoutLogRoutes);
+  protectedRoutes.use(goalRoutes);
+  protectedRoutes.use(streakRoutes);
   protectedRoutes.use(rbacExampleRoutes);
   app.use('/v1', protectedRoutes);
 

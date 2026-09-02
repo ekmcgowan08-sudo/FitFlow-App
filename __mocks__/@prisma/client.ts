@@ -48,15 +48,30 @@ export interface PrismaMockClient {
   };
   streak: {
     upsert: jest.Mock;
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
   };
   userProfile: {
     upsert: jest.Mock;
+  };
+  goal: {
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+    delete: jest.Mock;
+    count: jest.Mock;
   };
   // Renamed from the security module's `coachClient` to match the
   // canonical schema's `CoachAssignment` model — see
   // docs/architecture/canonical-schema-decisions.md.
   coachAssignment: {
     findUnique: jest.Mock;
+    findMany: jest.Mock;
+    upsert: jest.Mock;
+    update: jest.Mock;
   };
   $transaction: jest.Mock;
 }
@@ -94,12 +109,27 @@ export const prismaMock: PrismaMockClient = {
   },
   streak: {
     upsert: jest.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
   },
   userProfile: {
     upsert: jest.fn(),
   },
+  goal: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+  },
   coachAssignment: {
     findUnique: jest.fn(),
+    findMany: jest.fn(),
+    upsert: jest.fn(),
+    update: jest.fn(),
   },
   $transaction: jest.fn(),
 };

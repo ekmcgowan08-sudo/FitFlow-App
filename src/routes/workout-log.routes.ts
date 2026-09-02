@@ -29,11 +29,13 @@ import {
   type CreateWorkoutLogInput,
 } from '../validation/workout-log.schema';
 import { WorkoutLogRepository } from '../repositories/workout-log.repository';
+import { MemberRepository } from '../repositories/member.repository';
 import { prisma } from '../lib/prisma-client';
 import { ForbiddenError } from '../lib/errors';
 
 const router = Router();
 const workoutLogRepository = new WorkoutLogRepository(prisma);
+const memberRepository = new MemberRepository(prisma);
 
 router.get('/workout-logs', validate({ query: listWorkoutLogsQuerySchema }), async (req, res: Response, next) => {
   try {
@@ -93,6 +95,11 @@ router.post('/workout-logs', validate({ body: createWorkoutLogSchema }), async (
       caloriesBurned: input.caloriesBurned,
       notes: input.notes,
     });
+
+    // A logged workout advances the member's "workout" streak. This is
+    // the first real caller of MemberRepository.incrementStreak, which
+    // previously existed but was never wired to anything.
+    await memberRepository.incrementStreak(input.memberId, 'workout');
 
     res.status(201).json({ session });
   } catch (err) {

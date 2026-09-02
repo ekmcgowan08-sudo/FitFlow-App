@@ -30,6 +30,10 @@ tags:
     description: Ad-hoc workout logging (repository-pattern wiring).
   - name: workout-sessions
     description: Workout-session CRUD scoped to the authenticated user.
+  - name: goals
+    description: Member health/fitness goal CRUD.
+  - name: streaks
+    description: Read-only streak counters, advanced as a side effect of other actions.
   - name: admin
     description: Admin-only account management.
 
@@ -338,6 +342,153 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/goals:
+    get:
+      tags: [goals]
+      summary: List goals (own, or another member's via userId if ADMIN/COACH)
+      parameters:
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: category
+          in: query
+          schema: { $ref: "#/components/schemas/GoalCategory" }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/GoalStatus" }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated goal list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  goals:
+                    type: array
+                    items: { $ref: "#/components/schemas/Goal" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [goals]
+      summary: Create a goal (own, or another member's via userId if ADMIN/COACH)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, category, title]
+              properties:
+                userId: { type: string, format: uuid }
+                category: { $ref: "#/components/schemas/GoalCategory" }
+                title: { type: string }
+                targetValue: { type: number }
+                targetUnit: { type: string }
+                dueDate: { type: string, format: date }
+      responses:
+        "201":
+          description: Created goal.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  goal: { $ref: "#/components/schemas/Goal" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/goals/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [goals]
+      summary: Get a goal (self, or ADMIN/COACH)
+      responses:
+        "200":
+          description: The goal.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  goal: { $ref: "#/components/schemas/Goal" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: Not found, or found but not owned by the caller (never disclosed which).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    patch:
+      tags: [goals]
+      summary: Update a goal (self, or ADMIN/COACH)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category: { $ref: "#/components/schemas/GoalCategory" }
+                title: { type: string }
+                targetValue: { type: number }
+                targetUnit: { type: string }
+                dueDate: { type: string, format: date }
+                status: { $ref: "#/components/schemas/GoalStatus" }
+      responses:
+        "200":
+          description: Updated goal.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  goal: { $ref: "#/components/schemas/Goal" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [goals]
+      summary: Delete a goal (self, or ADMIN/COACH)
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/streaks:
+    get:
+      tags: [streaks]
+      summary: List streak counters (own, or another member's via userId if ADMIN/COACH)
+      parameters:
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The member's streaks.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  streaks:
+                    type: array
+                    items: { $ref: "#/components/schemas/Streak" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /v1/admin/users/{id}:
     parameters:
       - name: id
@@ -406,6 +557,37 @@ components:
     WorkoutCategory:
       type: string
       enum: [STRENGTH, CARDIO, MOBILITY, SPORT, RECOVERY]
+
+    GoalCategory:
+      type: string
+      enum: [weight, strength, nutrition, consistency, sleep, budget]
+
+    GoalStatus:
+      type: string
+      enum: [active, paused, achieved, archived]
+
+    Goal:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        category: { $ref: "#/components/schemas/GoalCategory" }
+        title: { type: string }
+        targetValue: { type: number, nullable: true }
+        targetUnit: { type: string, nullable: true }
+        dueDate: { type: string, format: date, nullable: true }
+        status: { $ref: "#/components/schemas/GoalStatus" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    Streak:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string, format: uuid }
+        streakType: { type: string, example: workout }
+        currentCount: { type: integer }
+        bestCount: { type: integer }
 
     TokenPair:
       type: object

@@ -128,6 +128,48 @@ describe("workout-log routes", () => {
       expect(createArgs.data.sessionExercises.create.exerciseId).toBe("exercise-1");
       expect(createArgs.data.sessionExercises.create.sets.create.reps).toBe(5);
       expect(res.body.session.sessionExercises[0].sets[0].id).toBe("set-1");
+
+      // Logging a workout advances the member's "workout" streak
+      // (MemberRepository.incrementStreak, previously unwired to anything).
+      // No existing streak row -> creates the first one.
+      expect(prismaMock.streak.create).toHaveBeenCalledWith({
+        data: { userId, streakType: "workout", currentCount: 1, bestCount: 1 },
+      });
+    });
+
+    it("advances bestCount along with currentCount when it's a new high", async () => {
+      const userId = "11111111-1111-4111-8111-111111111111";
+      mockAuthedUser(userId);
+      prismaMock.exercise.findFirst.mockResolvedValueOnce({ id: "exercise-1" });
+      prismaMock.workoutSession.create.mockResolvedValueOnce({ id: "session-1", userId });
+      // An existing streak already at its best (3/3) — logging one more
+      // workout must push both currentCount AND bestCount to 4, not leave
+      // bestCount frozen at 3.
+      prismaMock.streak.findUnique.mockResolvedValueOnce({
+        userId,
+        streakType: "workout",
+        currentCount: 3,
+        bestCount: 3,
+      });
+
+      const res = await request(app)
+        .post("/v1/workout-logs")
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({
+          memberId: userId,
+          exerciseName: "Back Squat",
+          category: "STRENGTH",
+          sets: 3,
+          reps: 5,
+          durationMinutes: 20,
+          loggedAt: new Date().toISOString(),
+        });
+
+      expect(res.status).toBe(201);
+      expect(prismaMock.streak.update).toHaveBeenCalledWith({
+        where: { userId_streakType: { userId, streakType: "workout" } },
+        data: { currentCount: 4, bestCount: 4 },
+      });
     });
 
     it("forbids logging a workout for someone else without an elevated role", async () => {
