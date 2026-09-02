@@ -73,6 +73,12 @@ export interface PrismaMockClient {
     create: jest.Mock;
     delete: jest.Mock;
   };
+  userMedicalNote: {
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
+    create: jest.Mock;
+    delete: jest.Mock;
+  };
   badge: {
     findMany: jest.Mock;
     create: jest.Mock;
@@ -213,6 +219,12 @@ export const prismaMock: PrismaMockClient = {
     upsert: jest.fn(),
   },
   userAllergy: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    delete: jest.fn(),
+  },
+  userMedicalNote: {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     create: jest.fn(),

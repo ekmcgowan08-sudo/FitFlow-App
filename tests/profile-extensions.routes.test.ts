@@ -180,4 +180,68 @@ describe("profile-extensions routes", () => {
       expect(prismaMock.userAllergy.delete).not.toHaveBeenCalled();
     });
   });
+
+  describe("medical notes (self/ADMIN only — stricter than allergies)", () => {
+    it("lets the caller add their own medical note", async () => {
+      mockAuthedUser(USER_ID);
+      prismaMock.userMedicalNote.create.mockResolvedValueOnce({
+        id: ALLERGY_ID,
+        userId: USER_ID,
+        noteText: "Prior ACL surgery, 2023.",
+      });
+
+      const res = await request(app)
+        .post(`/v1/members/${USER_ID}/medical-notes`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`)
+        .send({ noteText: "Prior ACL surgery, 2023." });
+
+      expect(res.status).toBe(201);
+    });
+
+    it("forbids a COACH from reading a client's medical notes (unlike allergies)", async () => {
+      mockAuthedUser("coach-1", ["COACH"]);
+
+      const res = await request(app)
+        .get(`/v1/members/${OTHER_ID}/medical-notes`)
+        .set("Authorization", `Bearer ${tokenFor("coach-1")}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.userMedicalNote.findMany).not.toHaveBeenCalled();
+    });
+
+    it("lets an ADMIN read a member's medical notes", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.userMedicalNote.findMany.mockResolvedValueOnce([]);
+
+      const res = await request(app)
+        .get(`/v1/members/${OTHER_ID}/medical-notes`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("deletes the caller's own medical note", async () => {
+      mockAuthedUser(USER_ID);
+      prismaMock.userMedicalNote.findUnique.mockResolvedValueOnce({ id: ALLERGY_ID, userId: USER_ID });
+      prismaMock.userMedicalNote.delete.mockResolvedValueOnce({ id: ALLERGY_ID });
+
+      const res = await request(app)
+        .delete(`/v1/members/${USER_ID}/medical-notes/${ALLERGY_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(204);
+    });
+
+    it("returns 404 for a medical note belonging to a different member", async () => {
+      mockAuthedUser(USER_ID);
+      prismaMock.userMedicalNote.findUnique.mockResolvedValueOnce({ id: ALLERGY_ID, userId: OTHER_ID });
+
+      const res = await request(app)
+        .delete(`/v1/members/${USER_ID}/medical-notes/${ALLERGY_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(404);
+      expect(prismaMock.userMedicalNote.delete).not.toHaveBeenCalled();
+    });
+  });
 });

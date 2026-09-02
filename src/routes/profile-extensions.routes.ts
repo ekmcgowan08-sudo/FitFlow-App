@@ -15,9 +15,12 @@ import {
   updateHealthProfileSchema,
   createAllergySchema,
   allergyIdParamsSchema,
+  createMedicalNoteSchema,
+  medicalNoteIdParamsSchema,
   type UpdatePreferencesInput,
   type UpdateHealthProfileInput,
   type CreateAllergyInput,
+  type CreateMedicalNoteInput,
 } from '../validation/profile-extensions.schema';
 import { prisma } from '../lib/prisma-client';
 import { ForbiddenError, NotFoundError } from '../lib/errors';
@@ -30,6 +33,16 @@ function canRead(req: AuthenticatedRequest, targetUserId: string): boolean {
 }
 
 function canWrite(req: AuthenticatedRequest, targetUserId: string): boolean {
+  return req.user.id === targetUserId || hasRole(req.user, 'ADMIN');
+}
+
+/**
+ * Medical notes get their own, stricter check: self or ADMIN for BOTH
+ * read and write — no COACH access at all, unlike preferences/health
+ * profile/allergies above. Free-text clinical notes are materially more
+ * sensitive than a structured allergy list.
+ */
+function canAccessMedicalNotes(req: AuthenticatedRequest, targetUserId: string): boolean {
   return req.user.id === targetUserId || hasRole(req.user, 'ADMIN');
 }
 
@@ -169,6 +182,69 @@ router.delete(
       if (!existing || existing.userId !== userId) throw new NotFoundError('Allergy not found.');
 
       await prisma.userAllergy.delete({ where: { id: allergyId } });
+      res.status(204).send();
+    } catch (err) {
+      next(translatePrismaError(err));
+    }
+  },
+);
+
+// --- Medical notes (self/ADMIN only — no COACH access) -----------------
+
+router.get(
+  '/members/:userId/medical-notes',
+  validate({ params: memberIdParamsSchema }),
+  async (req, res: Response, next) => {
+    try {
+      const authedReq = req as AuthenticatedRequest;
+      const { userId } = req.validated!.params as { userId: string };
+      if (!canAccessMedicalNotes(authedReq, userId)) {
+        throw new ForbiddenError('You may not view this member’s medical notes.');
+      }
+
+      const medicalNotes = await prisma.userMedicalNote.findMany({ where: { userId } });
+      res.json({ medicalNotes });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  '/members/:userId/medical-notes',
+  validate({ params: memberIdParamsSchema, body: createMedicalNoteSchema }),
+  async (req, res: Response, next) => {
+    try {
+      const authedReq = req as AuthenticatedRequest;
+      const { userId } = req.validated!.params as { userId: string };
+      if (!canAccessMedicalNotes(authedReq, userId)) {
+        throw new ForbiddenError('You may not add medical notes for this member.');
+      }
+      const input = req.validated!.body as CreateMedicalNoteInput;
+
+      const medicalNote = await prisma.userMedicalNote.create({ data: { userId, noteText: input.noteText } });
+      res.status(201).json({ medicalNote });
+    } catch (err) {
+      next(translatePrismaError(err));
+    }
+  },
+);
+
+router.delete(
+  '/members/:userId/medical-notes/:noteId',
+  validate({ params: medicalNoteIdParamsSchema }),
+  async (req, res: Response, next) => {
+    try {
+      const authedReq = req as AuthenticatedRequest;
+      const { userId, noteId } = req.validated!.params as { userId: string; noteId: string };
+      if (!canAccessMedicalNotes(authedReq, userId)) {
+        throw new ForbiddenError('You may not remove medical notes for this member.');
+      }
+
+      const existing = await prisma.userMedicalNote.findUnique({ where: { id: noteId } });
+      if (!existing || existing.userId !== userId) throw new NotFoundError('Medical note not found.');
+
+      await prisma.userMedicalNote.delete({ where: { id: noteId } });
       res.status(204).send();
     } catch (err) {
       next(translatePrismaError(err));

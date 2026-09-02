@@ -63,3 +63,17 @@ export const allergyIdParamsSchema = z.object({
   userId: z.string().uuid('userId must be a valid UUID.'),
   allergyId: z.string().uuid('allergyId must be a valid UUID.'),
 });
+
+/**
+ * POST /v1/members/:userId/medical-notes. Deliberately more restricted
+ * than allergies (self/ADMIN only, no COACH) — medical notes are
+ * free-text clinical information, a materially more sensitive category
+ * than a structured allergy list a coach needs for meal planning.
+ */
+export const createMedicalNoteSchema = z.object({ noteText: z.string().trim().min(1).max(2000) }).strict();
+export type CreateMedicalNoteInput = z.infer<typeof createMedicalNoteSchema>;
+
+export const medicalNoteIdParamsSchema = z.object({
+  userId: z.string().uuid('userId must be a valid UUID.'),
+  noteId: z.string().uuid('noteId must be a valid UUID.'),
+});

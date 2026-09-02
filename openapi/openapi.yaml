@@ -1421,6 +1421,72 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/members/{userId}/medical-notes:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [profile-extensions]
+      summary: List a member's medical notes (self, or ADMIN only — no COACH access)
+      responses:
+        "200":
+          description: The member's medical notes.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  medicalNotes:
+                    type: array
+                    items: { $ref: "#/components/schemas/MedicalNote" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [profile-extensions]
+      summary: Add a medical note (self, or ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [noteText]
+              properties:
+                noteText: { type: string }
+      responses:
+        "201":
+          description: Created medical note.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  medicalNote: { $ref: "#/components/schemas/MedicalNote" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/members/{userId}/medical-notes/{noteId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: noteId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [profile-extensions]
+      summary: Remove a medical note (self, or ADMIN only)
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/badges:
     get:
       tags: [gamification]
@@ -1969,6 +2035,13 @@ components:
         id: { type: string, format: uuid }
         userId: { type: string, format: uuid }
         allergyName: { type: string }
+
+    MedicalNote:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        noteText: { type: string }
 
     MealPlanSummary:
       type: object
