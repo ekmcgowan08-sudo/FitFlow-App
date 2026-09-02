@@ -19,6 +19,8 @@ import workoutPlanRoutes from './routes/workout-plan.routes';
 import mealPlanRoutes from './routes/meal-plan.routes';
 import groceryPlanRoutes from './routes/grocery-plan.routes';
 import profileExtensionsRoutes from './routes/profile-extensions.routes';
+import gamificationRoutes from './routes/gamification.routes';
+import wearableSummaryRoutes from './routes/wearable-summary.routes';
 import rbacExampleRoutes from './routes/rbac-examples.routes';
 import { errorHandler } from './lib/errors';
 
@@ -59,6 +61,8 @@ export function createApp(): Express {
   protectedRoutes.use(mealPlanRoutes);
   protectedRoutes.use(groceryPlanRoutes);
   protectedRoutes.use(profileExtensionsRoutes);
+  protectedRoutes.use(gamificationRoutes);
+  protectedRoutes.use(wearableSummaryRoutes);
   protectedRoutes.use(rbacExampleRoutes);
   app.use('/v1', protectedRoutes);
 

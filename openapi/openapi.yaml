@@ -50,6 +50,10 @@ tags:
     description: Coach/AI-authored weekly meal plans.
   - name: grocery-plans
     description: Shopping lists with per-item pricing.
+  - name: gamification
+    description: Badges and achievements. Reads are self or ADMIN/COACH; writes are ADMIN only (system-awarded).
+  - name: wearables
+    description: Daily wearable sync (steps, sleep, heart rate).
   - name: admin
     description: Admin-only account management.
 
@@ -1415,6 +1419,202 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/badges:
+    get:
+      tags: [gamification]
+      summary: List badges (own, or another member's via userId if ADMIN/COACH)
+      parameters:
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The member's badges.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  badges:
+                    type: array
+                    items: { $ref: "#/components/schemas/Badge" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [gamification]
+      summary: Award a badge (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, name]
+              properties:
+                userId: { type: string, format: uuid }
+                name: { type: string }
+                unlockedAt: { type: string, format: date-time }
+      responses:
+        "201":
+          description: Awarded badge.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  badge: { $ref: "#/components/schemas/Badge" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/achievements:
+    get:
+      tags: [gamification]
+      summary: List achievements (own, or another member's via userId if ADMIN/COACH)
+      parameters:
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The member's achievements.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  achievements:
+                    type: array
+                    items: { $ref: "#/components/schemas/Achievement" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [gamification]
+      summary: Create an achievement (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, title]
+              properties:
+                userId: { type: string, format: uuid }
+                title: { type: string }
+                progressPercent: { type: number, default: 0 }
+                status: { type: string, enum: [locked, in_progress, unlocked], default: locked }
+      responses:
+        "201":
+          description: Created achievement.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  achievement: { $ref: "#/components/schemas/Achievement" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/achievements/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [gamification]
+      summary: Update achievement progress/status (ADMIN only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                progressPercent: { type: number }
+                status: { type: string, enum: [locked, in_progress, unlocked] }
+      responses:
+        "200":
+          description: Updated achievement.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  achievement: { $ref: "#/components/schemas/Achievement" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/wearable-summaries:
+    get:
+      tags: [wearables]
+      summary: List daily wearable summaries (own, or another member's via userId if ADMIN/COACH)
+      parameters:
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Paginated summaries, most recent first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summaries:
+                    type: array
+                    items: { $ref: "#/components/schemas/WearableDailySummary" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [wearables]
+      summary: Sync a day's wearable data (own, or ADMIN on a member's behalf) — upserts by (userId, summaryDate)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, summaryDate]
+              properties:
+                userId: { type: string, format: uuid }
+                summaryDate: { type: string, format: date }
+                steps: { type: integer }
+                activeCalories: { type: integer }
+                exerciseMinutes: { type: integer }
+                restingHeartRate: { type: integer }
+                sleepHours: { type: number }
+      responses:
+        "201":
+          description: Created or updated summary for that day.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary: { $ref: "#/components/schemas/WearableDailySummary" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /v1/admin/users/{id}:
     parameters:
       - name: id
@@ -1560,6 +1760,35 @@ components:
             sessions:
               type: array
               items: { $ref: "#/components/schemas/WorkoutPlanSession" }
+
+    Badge:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        name: { type: string }
+        unlockedAt: { type: string, format: date-time, nullable: true }
+
+    Achievement:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        title: { type: string }
+        progressPercent: { type: number }
+        status: { type: string, enum: [locked, in_progress, unlocked] }
+
+    WearableDailySummary:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string, format: uuid }
+        summaryDate: { type: string, format: date }
+        steps: { type: integer, nullable: true }
+        activeCalories: { type: integer, nullable: true }
+        exerciseMinutes: { type: integer, nullable: true }
+        restingHeartRate: { type: integer, nullable: true }
+        sleepHours: { type: number, nullable: true }
 
     UserPreferences:
       type: object

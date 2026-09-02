@@ -73,6 +73,21 @@ export interface PrismaMockClient {
     create: jest.Mock;
     delete: jest.Mock;
   };
+  badge: {
+    findMany: jest.Mock;
+    create: jest.Mock;
+  };
+  achievement: {
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+  };
+  wearableDailySummary: {
+    findMany: jest.Mock;
+    upsert: jest.Mock;
+    count: jest.Mock;
+  };
   goal: {
     findMany: jest.Mock;
     findUnique: jest.Mock;
@@ -191,6 +206,21 @@ export const prismaMock: PrismaMockClient = {
     findUnique: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
+  },
+  badge: {
+    findMany: jest.fn(),
+    create: jest.fn(),
+  },
+  achievement: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+  },
+  wearableDailySummary: {
+    findMany: jest.fn(),
+    upsert: jest.fn(),
+    count: jest.fn(),
   },
   goal: {
     findMany: jest.fn(),
