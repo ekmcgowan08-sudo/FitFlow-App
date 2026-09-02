@@ -72,6 +72,16 @@ export interface PrismaMockClient {
     delete: jest.Mock;
     count: jest.Mock;
   };
+  gym: {
+    findMany: jest.Mock;
+    create: jest.Mock;
+    count: jest.Mock;
+  };
+  gymCheckIn: {
+    findMany: jest.Mock;
+    create: jest.Mock;
+    count: jest.Mock;
+  };
   // Renamed from the security module's `coachClient` to match the
   // canonical schema's `CoachAssignment` model — see
   // docs/architecture/canonical-schema-decisions.md.
@@ -140,6 +150,16 @@ export const prismaMock: PrismaMockClient = {
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+    count: jest.fn(),
+  },
+  gym: {
+    findMany: jest.fn(),
+    create: jest.fn(),
+    count: jest.fn(),
+  },
+  gymCheckIn: {
+    findMany: jest.fn(),
+    create: jest.fn(),
     count: jest.fn(),
   },
   coachAssignment: {

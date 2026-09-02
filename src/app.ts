@@ -13,6 +13,7 @@ import goalRoutes from './routes/goal.routes';
 import streakRoutes from './routes/streak.routes';
 import nutritionLogRoutes from './routes/nutrition-log.routes';
 import coachAssignmentRoutes from './routes/coach-assignment.routes';
+import gymRoutes from './routes/gym.routes';
 import rbacExampleRoutes from './routes/rbac-examples.routes';
 import { errorHandler } from './lib/errors';
 
@@ -47,6 +48,7 @@ export function createApp(): Express {
   protectedRoutes.use(streakRoutes);
   protectedRoutes.use(nutritionLogRoutes);
   protectedRoutes.use(coachAssignmentRoutes);
+  protectedRoutes.use(gymRoutes);
   protectedRoutes.use(rbacExampleRoutes);
   app.use('/v1', protectedRoutes);
 

@@ -38,6 +38,8 @@ tags:
     description: Food/drink log CRUD.
   - name: coaching
     description: Coach <-> client relationship management.
+  - name: gyms
+    description: Gym catalog and check-ins.
   - name: admin
     description: Admin-only account management.
 
@@ -719,6 +721,121 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/gyms:
+    get:
+      tags: [gyms]
+      summary: Browse the gym catalog
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated gym list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gyms:
+                    type: array
+                    items: { $ref: "#/components/schemas/Gym" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [gyms]
+      summary: Add a gym to the catalog (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                city: { type: string }
+                state: { type: string }
+      responses:
+        "201":
+          description: Created gym.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gym: { $ref: "#/components/schemas/Gym" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/gym-checkins:
+    get:
+      tags: [gyms]
+      summary: List gym check-ins (own, or another member's via userId if ADMIN/COACH)
+      parameters:
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated check-in list, each including the gym.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  checkIns:
+                    type: array
+                    items: { $ref: "#/components/schemas/GymCheckIn" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [gyms]
+      summary: Record a gym check-in (own, or another member's via userId if ADMIN/COACH)
+      description: |
+        A `qr` or `geofence` check-in earns 10 points and advances the
+        member's `gym_checkin` streak; a `manual` (self-reported, unverified)
+        check-in earns 0 points but still advances the streak.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, gymId, source]
+              properties:
+                userId: { type: string, format: uuid }
+                gymId: { type: string, format: uuid }
+                source: { type: string, enum: [qr, geofence, manual] }
+                checkedInAt: { type: string, format: date-time }
+      responses:
+        "201":
+          description: Recorded check-in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  checkIn: { $ref: "#/components/schemas/GymCheckIn" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /v1/admin/users/{id}:
     parameters:
       - name: id
@@ -822,6 +939,26 @@ components:
     MealType:
       type: string
       enum: [breakfast, lunch, dinner, snack, drink]
+
+    Gym:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        city: { type: string, nullable: true }
+        state: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    GymCheckIn:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        gymId: { type: string, format: uuid }
+        checkedInAt: { type: string, format: date-time }
+        source: { type: string, enum: [qr, geofence, manual] }
+        pointsEarned: { type: integer }
+        gym: { $ref: "#/components/schemas/Gym" }
 
     CoachAssignment:
       type: object
