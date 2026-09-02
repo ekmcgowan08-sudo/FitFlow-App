@@ -80,6 +80,7 @@ export interface PrismaMockClient {
     findMany: jest.Mock;
     upsert: jest.Mock;
     update: jest.Mock;
+    create: jest.Mock;
   };
   $transaction: jest.Mock;
 }
@@ -146,6 +147,7 @@ export const prismaMock: PrismaMockClient = {
     findMany: jest.fn(),
     upsert: jest.fn(),
     update: jest.fn(),
+    create: jest.fn(),
   },
   $transaction: jest.fn(),
 };

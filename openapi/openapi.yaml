@@ -36,6 +36,8 @@ tags:
     description: Read-only streak counters, advanced as a side effect of other actions.
   - name: nutrition-logs
     description: Food/drink log CRUD.
+  - name: coaching
+    description: Coach <-> client relationship management.
   - name: admin
     description: Admin-only account management.
 
@@ -609,6 +611,114 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/coach/clients:
+    get:
+      tags: [coaching]
+      summary: List a coach's client roster (own, or another coach's via coachUserId if ADMIN)
+      parameters:
+        - name: coachUserId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The coach's assignments, each including the client (passwordHash omitted).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignments:
+                    type: array
+                    items: { $ref: "#/components/schemas/CoachAssignment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/coach/coaches:
+    get:
+      tags: [coaching]
+      summary: List a client's coach(es) (own, or another client's via clientUserId if ADMIN)
+      parameters:
+        - name: clientUserId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The client's assignments, each including the coach (passwordHash omitted).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignments:
+                    type: array
+                    items: { $ref: "#/components/schemas/CoachAssignment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/coach/assignments:
+    post:
+      tags: [coaching]
+      summary: Create a coach<->client relationship (a COACH may only name themselves as coach; ADMIN may name any coach)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [coachUserId, clientUserId]
+              properties:
+                coachUserId: { type: string, format: uuid }
+                clientUserId: { type: string, format: uuid }
+                startsOn: { type: string, format: date }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Created assignment.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignment: { $ref: "#/components/schemas/CoachAssignment" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/coach/assignments/{coachUserId}/{clientUserId}:
+    parameters:
+      - name: coachUserId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: clientUserId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [coaching]
+      summary: Update a coach assignment (either party to the relationship, or ADMIN)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                relationshipStatus: { type: string, enum: [active, paused, ended] }
+                notes: { type: string }
+      responses:
+        "200":
+          description: Updated assignment.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignment: { $ref: "#/components/schemas/CoachAssignment" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/admin/users/{id}:
     parameters:
       - name: id
@@ -712,6 +822,18 @@ components:
     MealType:
       type: string
       enum: [breakfast, lunch, dinner, snack, drink]
+
+    CoachAssignment:
+      type: object
+      properties:
+        coachUserId: { type: string, format: uuid }
+        clientUserId: { type: string, format: uuid }
+        relationshipStatus: { type: string, enum: [active, paused, ended] }
+        startsOn: { type: string, format: date, nullable: true }
+        notes: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        coach: { $ref: "#/components/schemas/Member" }
+        client: { $ref: "#/components/schemas/Member" }
 
     NutritionLog:
       type: object
