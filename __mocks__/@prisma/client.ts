@@ -59,6 +59,20 @@ export interface PrismaMockClient {
   userProfile: {
     upsert: jest.Mock;
   };
+  userPreference: {
+    findUnique: jest.Mock;
+    upsert: jest.Mock;
+  };
+  userHealthProfile: {
+    findUnique: jest.Mock;
+    upsert: jest.Mock;
+  };
+  userAllergy: {
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
+    create: jest.Mock;
+    delete: jest.Mock;
+  };
   goal: {
     findMany: jest.Mock;
     findUnique: jest.Mock;
@@ -163,6 +177,20 @@ export const prismaMock: PrismaMockClient = {
   },
   userProfile: {
     upsert: jest.fn(),
+  },
+  userPreference: {
+    findUnique: jest.fn(),
+    upsert: jest.fn(),
+  },
+  userHealthProfile: {
+    findUnique: jest.fn(),
+    upsert: jest.fn(),
+  },
+  userAllergy: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    delete: jest.fn(),
   },
   goal: {
     findMany: jest.fn(),

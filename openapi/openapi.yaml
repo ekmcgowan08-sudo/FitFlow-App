@@ -26,6 +26,8 @@ tags:
     description: Registration, login, refresh-token rotation, logout.
   - name: members
     description: Member profile read/update.
+  - name: profile-extensions
+    description: App preferences, health targets, and allergies. Reads are self or ADMIN/COACH; writes are self or ADMIN only.
   - name: workout-logs
     description: Ad-hoc workout logging (repository-pattern wiring).
   - name: workout-sessions
@@ -1252,6 +1254,167 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/members/{userId}/preferences:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [profile-extensions]
+      summary: Get a member's app preferences (self, or ADMIN/COACH)
+      responses:
+        "200":
+          description: The member's preferences (null if never set).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preferences: { $ref: "#/components/schemas/UserPreferences" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    patch:
+      tags: [profile-extensions]
+      summary: Update a member's app preferences (self, or ADMIN only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                goalStyle: { type: string, enum: [fat_loss, muscle_gain, maintenance, endurance, recomposition] }
+                workoutLocation: { type: string, enum: [home, gym, hybrid] }
+                dietStyle: { type: string, enum: [balanced, high_protein, low_carb, vegetarian, vegan, pescatarian] }
+                themeColor: { type: string }
+                coachPreference: { type: string }
+                smartwatchPlatform: { type: string, enum: [apple_health, wear_os, garmin, fitbit, none] }
+      responses:
+        "200":
+          description: Updated preferences.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preferences: { $ref: "#/components/schemas/UserPreferences" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/members/{userId}/health-profile:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [profile-extensions]
+      summary: Get a member's health/nutrition targets (self, or ADMIN/COACH)
+      responses:
+        "200":
+          description: The member's health profile (null if never set).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  healthProfile: { $ref: "#/components/schemas/UserHealthProfile" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    patch:
+      tags: [profile-extensions]
+      summary: Update a member's health/nutrition targets (self, or ADMIN only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                calorieTarget: { type: integer }
+                proteinTargetGrams: { type: integer }
+                carbTargetGrams: { type: integer }
+                fatTargetGrams: { type: integer }
+                waterTargetOz: { type: integer }
+      responses:
+        "200":
+          description: Updated health profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  healthProfile: { $ref: "#/components/schemas/UserHealthProfile" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/members/{userId}/allergies:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [profile-extensions]
+      summary: List a member's allergies (self, or ADMIN/COACH)
+      responses:
+        "200":
+          description: The member's allergies.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allergies:
+                    type: array
+                    items: { $ref: "#/components/schemas/Allergy" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [profile-extensions]
+      summary: Add an allergy (self, or ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [allergyName]
+              properties:
+                allergyName: { type: string }
+      responses:
+        "201":
+          description: Created allergy.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allergy: { $ref: "#/components/schemas/Allergy" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/members/{userId}/allergies/{allergyId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: allergyId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [profile-extensions]
+      summary: Remove an allergy (self, or ADMIN only)
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/admin/users/{id}:
     parameters:
       - name: id
@@ -1397,6 +1560,40 @@ components:
             sessions:
               type: array
               items: { $ref: "#/components/schemas/WorkoutPlanSession" }
+
+    UserPreferences:
+      type: object
+      nullable: true
+      properties:
+        userId: { type: string, format: uuid }
+        goalStyle: { type: string, nullable: true }
+        workoutLocation: { type: string, nullable: true }
+        dietStyle: { type: string, nullable: true }
+        themeColor: { type: string, nullable: true }
+        coachPreference: { type: string, nullable: true }
+        smartwatchPlatform: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    UserHealthProfile:
+      type: object
+      nullable: true
+      properties:
+        userId: { type: string, format: uuid }
+        calorieTarget: { type: integer, nullable: true }
+        proteinTargetGrams: { type: integer, nullable: true }
+        carbTargetGrams: { type: integer, nullable: true }
+        fatTargetGrams: { type: integer, nullable: true }
+        waterTargetOz: { type: integer, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    Allergy:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        allergyName: { type: string }
 
     MealPlanSummary:
       type: object
