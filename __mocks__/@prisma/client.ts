@@ -88,6 +88,17 @@ export interface PrismaMockClient {
     upsert: jest.Mock;
     count: jest.Mock;
   };
+  coachProfile: {
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
+    upsert: jest.Mock;
+    count: jest.Mock;
+  };
+  coachSpecialty: {
+    findUnique: jest.Mock;
+    create: jest.Mock;
+    delete: jest.Mock;
+  };
   goal: {
     findMany: jest.Mock;
     findUnique: jest.Mock;
@@ -221,6 +232,17 @@ export const prismaMock: PrismaMockClient = {
     findMany: jest.fn(),
     upsert: jest.fn(),
     count: jest.fn(),
+  },
+  coachProfile: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    upsert: jest.fn(),
+    count: jest.fn(),
+  },
+  coachSpecialty: {
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    delete: jest.fn(),
   },
   goal: {
     findMany: jest.fn(),

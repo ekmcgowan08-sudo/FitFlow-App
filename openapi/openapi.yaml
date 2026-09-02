@@ -40,6 +40,8 @@ tags:
     description: Food/drink log CRUD.
   - name: coaching
     description: Coach <-> client relationship management.
+  - name: coach-profiles
+    description: Public coach directory — displayName, acceptsNewClients, specialties.
   - name: gyms
     description: Gym catalog and check-ins.
   - name: exercises
@@ -1615,6 +1617,133 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /v1/coach-profiles:
+    get:
+      tags: [coach-profiles]
+      summary: Browse the coach directory
+      parameters:
+        - name: acceptingClients
+          in: query
+          schema: { type: boolean }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated coach profiles, each with its specialties.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profiles:
+                    type: array
+                    items: { $ref: "#/components/schemas/CoachProfile" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/coach-profiles/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [coach-profiles]
+      summary: Get one coach's profile and specialties
+      responses:
+        "200":
+          description: The coach profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile: { $ref: "#/components/schemas/CoachProfile" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [coach-profiles]
+      summary: Create or update a coach profile (the coach themselves, or ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName: { type: string }
+                acceptsNewClients: { type: boolean, default: true }
+      responses:
+        "200":
+          description: Upserted profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile: { $ref: "#/components/schemas/CoachProfile" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/coach-profiles/{userId}/specialties:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [coach-profiles]
+      summary: Add a specialty (the coach themselves, or ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [specialty]
+              properties:
+                specialty: { type: string }
+      responses:
+        "201":
+          description: Added specialty.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  specialty: { $ref: "#/components/schemas/CoachSpecialty" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No coach profile exists yet for this user. }
+
+  /v1/coach-profiles/{userId}/specialties/{specialtyId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: specialtyId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [coach-profiles]
+      summary: Remove a specialty (the coach themselves, or ADMIN)
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/admin/users/{id}:
     parameters:
       - name: id
@@ -1760,6 +1889,23 @@ components:
             sessions:
               type: array
               items: { $ref: "#/components/schemas/WorkoutPlanSession" }
+
+    CoachSpecialty:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        coachUserId: { type: string, format: uuid }
+        specialty: { type: string }
+
+    CoachProfile:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        displayName: { type: string }
+        acceptsNewClients: { type: boolean }
+        specialties:
+          type: array
+          items: { $ref: "#/components/schemas/CoachSpecialty" }
 
     Badge:
       type: object
