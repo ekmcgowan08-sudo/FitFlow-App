@@ -13,21 +13,44 @@ A TypeScript/Express/Prisma/PostgreSQL API lives at the repo root:
   control, and refresh-token rotation with reuse detection.
 - `src/repositories/`, `src/validation/`, `src/middleware/` — the
   repository pattern and Zod request validation.
-- `src/routes/` — the HTTP surface: auth, member profiles, workout logs
-  and sessions, goals, streaks, nutrition logs, coach assignments, gyms
-  and check-ins, admin user management, and RBAC-guarded example routes.
+- `src/routes/` — the full HTTP surface (38 paths — see
+  `openapi/openapi.yaml`), covering essentially every model in the
+  canonical schema:
+  - **Identity & auth**: register/login/refresh/logout, member profile
+    read/update, admin user deletion.
+  - **Extended profile**: app preferences, health/nutrition targets,
+    allergies.
+  - **Training**: the exercise catalog, coach/AI-authored workout plan
+    templates, and the workout-log/session a member actually completes
+    (with a real find-or-create Exercise lookup and full
+    session→exercise→set write on every log).
+  - **Nutrition**: meal plans, grocery plans (with a server-computed
+    estimated total), and ad-hoc nutrition logs.
+  - **Coaching**: coach↔client assignments, both directions.
+  - **Gyms**: the gym catalog and check-ins (verified check-ins earn
+    points and advance a streak; unverifiable manual ones don't).
+  - **Progress**: streaks, gamification (badges/achievements — always
+    system-awarded, never client-authored), and daily wearable sync.
+  - RBAC-guarded example routes (`rbac-examples.routes.ts`) kept as a
+    worked reference for the HOF-guard vs. decorator style.
 - `openapi/openapi.yaml` — the spec for everything above, validated with
-  `@apidevtools/swagger-parser`.
+  `@apidevtools/swagger-parser` after every change.
 - `docs/artifacts/` — every original design/spec/code artifact, preserved
   verbatim, that this backend was consolidated from.
 
-Every list/create/update/delete endpoint scoped to a member (goals,
-nutrition logs, workout logs, gym check-ins) follows the same rule: a
-plain user can only ever act on their own rows; ADMIN can act on anyone's;
-COACH can act on their own and, where it makes product sense (viewing
-logs, listing clients), on their clients'. A resource id that exists but
+Every list/create/update/delete endpoint scoped to a member follows the
+same rule: a plain user can only ever act on their own rows; ADMIN can
+act on anyone's; COACH can act on their own and, where it makes product
+sense (viewing logs, listing/reading clients' data), on their clients' —
+but writes to another member's preferences, health targets, or wearable
+data are ADMIN-only even for their coach. A resource id that exists but
 isn't the caller's returns 404, never 403 — existence is never disclosed
 to a caller with no relationship to it.
+
+Every route above (and the schema/migration/seed/Docker pieces below) has
+been exercised against a real running Postgres instance — not just the
+mocked Jest suite — including a full fresh-registration walkthrough that
+hits every GET endpoint in the API.
 
 ### Running locally
 
