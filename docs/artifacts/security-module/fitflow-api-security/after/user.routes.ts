@@ -1,0 +1,129 @@
+// after/user.routes.ts
+// Remediated route handlers, using the RBAC module from ../rbac.
+
+import { Router, Response } from "express";
+import { PrismaClient } from "@prisma/client";
+import { authenticate } from "./auth.middleware";
+import { AuthenticatedRequest, isAuthenticated } from "./types";
+import { requireRole } from "../rbac/rbac.middleware";
+import { ForbiddenError, NotFoundError } from "../rbac/errors";
+
+const prisma = new PrismaClient();
+const router = Router();
+
+router.use(authenticate);
+
+// GET /v1/workout-sessions/:id
+router.get("/workout-sessions/:id", async (req, res: Response, next) => {
+  try {
+    if (!isAuthenticated(req)) throw new ForbiddenError();
+    const authedReq = req as AuthenticatedRequest;
+
+    // FIX (Prisma query scoping): the query is scoped by BOTH id and
+    // owning user id in the same `where` clause, so a request for a
+    // session that exists but belongs to someone else returns nothing —
+    // no BOLA/IDOR path exists here anymore.
+    const sessionId = req.params.id as string;
+    const session = await prisma.workoutSession.findFirst({
+      where: { id: sessionId, userId: authedReq.user.id },
+    });
+
+    if (!session) {
+      // FIX (status code consistency): a missing/not-owned resource is
+      // always 404, never 200 with a null body.
+      throw new NotFoundError("Workout session not found");
+    }
+
+    return res.status(200).json(session);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// GET /v1/workout-sessions
+router.get("/workout-sessions", async (req, res: Response, next) => {
+  try {
+    if (!isAuthenticated(req)) throw new ForbiddenError();
+    const authedReq = req as AuthenticatedRequest;
+
+    // FIX: every list endpoint is scoped by the authenticated user's id.
+    // There is no code path that returns cross-user data by default.
+    const sessions = await prisma.workoutSession.findMany({
+      where: { userId: authedReq.user.id },
+      orderBy: { startedAt: "desc" },
+    });
+
+    return res.status(200).json(sessions);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// PATCH /v1/workout-sessions/:id
+router.patch("/workout-sessions/:id", async (req, res: Response, next) => {
+  try {
+    if (!isAuthenticated(req)) throw new ForbiddenError();
+    const authedReq = req as AuthenticatedRequest;
+
+    // FIX (mass assignment): `userId` is never accepted from the request
+    // body. Ownership can't be reassigned by the client.
+    const { status } = req.body as { status?: string };
+    const allowedStatuses = ["in_progress", "completed", "cancelled"];
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        error: { code: "VALIDATION_ERROR", message: "Invalid status value" },
+      });
+    }
+
+    // FIX (Prisma query scoping): `updateMany` with a compound `where`
+    // (id + userId) updates zero rows if the caller doesn't own the
+    // record, instead of `update` blindly targeting by id alone.
+    const sessionId = req.params.id as string;
+    const result = await prisma.workoutSession.updateMany({
+      where: { id: sessionId, userId: authedReq.user.id },
+      data: { ...(status ? { status } : {}) },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundError("Workout session not found");
+    }
+
+    const updated = await prisma.workoutSession.findFirst({
+      where: { id: sessionId, userId: authedReq.user.id },
+    });
+    return res.status(200).json(updated);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// DELETE /v1/admin/users/:id  (admin-only)
+// FIX: `requireRole("ADMIN")` is composed directly into the route
+// definition, so the authorization requirement is visible at a glance
+// and can't be "forgotten" inside a handler body.
+router.delete(
+  "/admin/users/:id",
+  requireRole("ADMIN"),
+  async (req, res: Response, next) => {
+    try {
+      const targetUserId = req.params.id as string;
+      const existing = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: { id: true },
+      });
+      if (!existing) {
+        throw new NotFoundError("User not found");
+      }
+
+      await prisma.user.delete({ where: { id: targetUserId } });
+
+      // FIX (status code consistency): 204 No Content on a successful
+      // delete, matching the convention used across the rest of the API.
+      return res.status(204).send();
+    } catch (err) {
+      return next(err);
+    }
+  }
+);
+
+export default router;

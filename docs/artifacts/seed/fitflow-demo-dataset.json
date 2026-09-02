@@ -1,0 +1,76 @@
+{
+  "scenario": "Member daily flow demo",
+  "memberId": "mem_001",
+  "date": "2026-07-28",
+  "screens": [
+    {
+      "screen": "dashboard",
+      "headline": "On track for protein and workout goals",
+      "kpis": {
+        "caloriesRemaining": 1240,
+        "proteinRemainingGrams": 120,
+        "waterRemainingOz": 72,
+        "streakDays": 11
+      }
+    },
+    {
+      "screen": "meal-plan",
+      "headline": "Meals aligned to fat-loss and high-protein targets",
+      "recommendedMeals": [
+        "Greek yogurt parfait",
+        "Chicken quinoa bowl",
+        "Salmon rice plate"
+      ]
+    },
+    {
+      "screen": "budget",
+      "headline": "Best shopping mix for this week",
+      "stores": [
+        "Kroger",
+        "Aldi",
+        "Walmart"
+      ],
+      "estimatedBasketUsd": 74.21
+    },
+    {
+      "screen": "workout",
+      "headline": "Lower body strength day",
+      "focus": "Leg Press",
+      "restTimerSeconds": 90,
+      "videoAutoPlay": false
+    },
+    {
+      "screen": "gym-check-in",
+      "headline": "QR check-in rewards applied",
+      "gymName": "Fit House Sharonville",
+      "pointsEarned": 25
+    },
+    {
+      "screen": "watch-summary",
+      "headline": "Smartwatch snapshot",
+      "stats": {
+        "steps": 10422,
+        "exerciseMinutes": 48,
+        "sleepHours": 7.6
+      }
+    }
+  ],
+  "apiExamples": [
+    {
+      "method": "GET",
+      "path": "/members/mem_001"
+    },
+    {
+      "method": "GET",
+      "path": "/members/mem_001/nutrition/logs?date=2026-07-28"
+    },
+    {
+      "method": "GET",
+      "path": "/members/mem_001/workout-plans"
+    },
+    {
+      "method": "POST",
+      "path": "/gyms/check-ins"
+    }
+  ]
+}

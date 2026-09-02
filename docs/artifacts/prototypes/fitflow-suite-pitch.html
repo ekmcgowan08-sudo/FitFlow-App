@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="slides-format" content="viewport">
+  <title>FitFlow Suite Pitch Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-bg: #18181B;
+      --color-bg-deep: #111114;
+      --color-surface: #232329;
+      --color-text: #F7F4EF;
+      --color-text-secondary: #DDD6CE;
+      --color-text-muted: #AAA29A;
+      --color-accent-1: #F97316;
+      --color-accent-2: #14B8A6;
+      --color-accent-3: #FEF3C7;
+      --color-glass-bg: rgba(255,255,255,0.05);
+      --color-glass-border: rgba(255,255,255,0.08);
+      --color-vignette: rgba(0,0,0,0.42);
+      --font-display: 'Archivo Black', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+  </style>
+  <style>
+    :root { --color-bg: #18181B; --color-text: #F7F4EF; --glow-color-rgb: 249,115,22; }
+    *,*::before,*::after{box-sizing:border-box} html,body{background:var(--color-bg);margin:0} body{font-family:'DM Sans',sans-serif;color:var(--color-text);overflow:hidden;height:100vh;width:100vw}
+    .deck{width:100vw;height:100vh;position:relative}.slide{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--color-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transform:scale(.95);transition:opacity .7s ease,transform .7s ease;pointer-events:none;overflow:hidden}.slide.active{opacity:1;transform:scale(1);pointer-events:all}.slide>.content{position:relative;z-index:2;width:100%;max-width:1180px;padding:clamp(1.5rem,4vw,4rem)}
+    .nav-controls{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;z-index:100;background:rgba(255,255,255,.06);backdrop-filter:blur(10px);padding:10px 24px;border-radius:40px;border:1px solid rgba(255,255,255,.08)}
+    .nav-btn{width:40px;height:40px;border:none;background:rgba(255,255,255,.06);color:#F97316;border-radius:50%;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center}.slide-dots{display:flex;gap:8px}.slide-dots .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.12);cursor:pointer}.slide-dots .dot.active{background:#F97316;transform:scale(1.3)}.slide-counter{font-size:.8rem;color:#AAA29A;min-width:44px;text-align:center}.reveal{opacity:0;transform:translateY(20px)}
+    @keyframes float-slow{0%{transform:translate(0,0) scale(1)}25%{transform:translate(60px,-50px) scale(1.12)}50%{transform:translate(-40px,40px) scale(.9)}75%{transform:translate(50px,20px) scale(1.08)}100%{transform:translate(0,0) scale(1)}}
+    @keyframes float-drift{0%{transform:translate(0,0) scale(1) rotate(0deg)}33%{transform:translate(-50px,-60px) scale(1.15) rotate(3deg)}66%{transform:translate(40px,30px) scale(.88) rotate(-2deg)}100%{transform:translate(0,0) scale(1) rotate(0deg)}}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}
+    .gradient-mesh{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}.blob{position:absolute;border-radius:50%;filter:blur(80px);animation:float-slow 10s ease-in-out infinite}.blob:nth-child(2){animation:float-drift 14s ease-in-out infinite}.blob:nth-child(3){animation:float-slow 18s ease-in-out infinite reverse}
+    .slide::before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");background-repeat:repeat;background-size:256px 256px;opacity:.03;mix-blend-mode:overlay}
+    .slide::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.42) 100%)}
+    .text-glow{text-shadow:0 0 20px rgba(249,115,22,.5),0 0 40px rgba(249,115,22,.2)} .stat-glow{text-shadow:0 0 30px rgba(249,115,22,.6),0 0 60px rgba(249,115,22,.25)}
+    .bar-chart{display:flex;align-items:flex-end;gap:12px;height:180px}.bar-col{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1}.bar{border-radius:8px 8px 0 0;width:100%}
+    .deco-shape{position:absolute;border-radius:50%;border:1px solid rgba(255,255,255,.06);background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,0));z-index:1}
+    .logo-chip{display:inline-flex;gap:10px;align-items:center;padding:12px 16px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+    .pricing-row{display:grid;grid-template-columns:180px 1fr 70px;gap:12px;align-items:center}
+    .bar-track{height:28px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}.bar-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,#F97316,#14B8A6);width:0}
+    @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.2s!important}}
+  </style>
+</head>
+<body>
+<div class="mouse-spotlight" style="position:fixed;inset:0;z-index:99;pointer-events:none;"></div>
+<div class="deck">
+  <div class="slide active" data-slide="1">
+    <div class="gradient-mesh">
+      <div class="blob" style="width:500px;height:500px;top:-110px;right:-100px;background:#F97316;opacity:.16"></div>
+      <div class="blob" style="width:320px;height:320px;bottom:-90px;left:-50px;background:#14B8A6;opacity:.12"></div>
+      <div class="blob" style="width:220px;height:220px;top:42%;left:14%;background:#FEF3C7;opacity:.1"></div>
+    </div>
+    <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1"></canvas>
+    <div class="content text-center">
+      <div class="text-[120px] mb-5 animate-[float_3s_ease-in-out_infinite] reveal">🏋️</div>
+      <h1 class="font-display text-[clamp(2.6rem,6vw,5.2rem)] bg-linear-to-br from-accent-1 via-accent-2 to-accent-3 bg-clip-text text-transparent tracking-tight mb-4 reveal">FitFlow Suite</h1>
+      <p class="text-[clamp(.95rem,1.5vw,1.35rem)] text-text-muted tracking-[6px] uppercase reveal">All-in-one fitness lifestyle app</p>
+      <p class="max-w-3xl mx-auto mt-8 text-xl text-text-secondary reveal">A phone-and-watch platform that connects food logging, meal planning, grocery savings, workouts, recovery, gym check-ins, and coach-guided personalization into one daily system.</p>
+    </div>
+  </div>
+
+  <div class="slide" data-slide="2">
+    <div class="gradient-mesh"><div class="blob" style="width:350px;height:350px;top:-80px;right:-80px;background:#F97316;opacity:.08"></div><div class="blob" style="width:250px;height:250px;bottom:-50px;left:-40px;background:#14B8A6;opacity:.06"></div></div>
+    <div class="deco-shape" data-speed="0.03" style="width:180px;height:180px;top:12%;right:8%"></div>
+    <div class="content">
+      <div class="logo-chip reveal mb-6"><span class="text-accent-1">01</span><span class="uppercase tracking-[0.18em] text-sm text-text-muted">Problem</span></div>
+      <h2 class="font-display text-[clamp(2rem,4.5vw,3.2rem)] mb-6 reveal">Fitness behavior is fragmented.</h2>
+      <div class="grid grid-cols-2 gap-6 mt-8">
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 hover:-translate-y-1 hover:shadow-xl transition reveal">
+          <h3 class="text-accent-1 text-2xl font-bold mb-3">Too many disconnected tools</h3>
+          <p class="text-text-secondary text-lg">Users commonly split calories, workouts, grocery planning, wearable metrics, motivation, and coaching across separate apps, which creates friction and weakens routine adherence.[web:45]</p>
+        </div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 hover:-translate-y-1 hover:shadow-xl transition reveal">
+          <h3 class="text-accent-2 text-2xl font-bold mb-3">Coaching and budget gaps</h3>
+          <p class="text-text-secondary text-lg">Many fitness products do not connect healthy eating decisions to grocery cost, and coach platforms often prioritize management tools without unifying the full client lifestyle journey.[web:38][web:44]</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" data-slide="3">
+    <div class="gradient-mesh"><div class="blob" style="width:350px;height:350px;top:-80px;right:-80px;background:#14B8A6;opacity:.08"></div><div class="blob" style="width:250px;height:250px;bottom:-50px;left:-40px;background:#F97316;opacity:.06"></div></div>
+    <div class="content">
+      <div class="logo-chip reveal mb-6"><span class="text-accent-1">02</span><span class="uppercase tracking-[0.18em] text-sm text-text-muted">Solution</span></div>
+      <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] mb-8 reveal">One system for fuel, training, recovery, and spend.</h2>
+      <div class="grid grid-cols-3 gap-6">
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-7 hover:-translate-y-1 hover:shadow-xl transition reveal"><div class="text-4xl mb-4">🥗</div><h3 class="text-2xl font-bold mb-3">Nutrition engine</h3><p class="text-text-secondary">Meal logging, hydration prompts, barcode or image entry, and adaptive meal suggestions based on goals and health needs.[web:2][web:9][web:15]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-7 hover:-translate-y-1 hover:shadow-xl transition reveal"><div class="text-4xl mb-4">🏋️</div><h3 class="text-2xl font-bold mb-3">Training engine</h3><p class="text-text-secondary">Exercise plans, machine guidance, reps, rest timers, and session-ready support on phone and watch.[web:23][web:41]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-7 hover:-translate-y-1 hover:shadow-xl transition reveal"><div class="text-4xl mb-4">🛒</div><h3 class="text-2xl font-bold mb-3">Budget engine</h3><p class="text-text-secondary">Meal-linked shopping lists, deal routing, and weekly spend awareness so healthy choices stay affordable.[web:32]</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" data-slide="4">
+    <div class="gradient-mesh"><div class="blob" style="width:460px;height:460px;top:-110px;left:-100px;background:#F97316;opacity:.12"></div><div class="blob" style="width:260px;height:260px;bottom:-60px;right:-40px;background:#14B8A6;opacity:.08"></div></div>
+    <canvas class="particle-canvas-ambient" style="position:absolute;inset:0;z-index:1"></canvas>
+    <div class="content text-center">
+      <div class="logo-chip reveal mb-6 mx-auto"><span class="text-accent-1">03</span><span class="uppercase tracking-[0.18em] text-sm text-text-muted">User journey</span></div>
+      <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] reveal">The product loop keeps users inside one habit system.</h2>
+      <div class="grid grid-cols-4 gap-5 mt-10">
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-6 reveal"><div class="text-3xl mb-4">1</div><h3 class="font-bold text-xl mb-2">Onboard</h3><p class="text-text-secondary">Capture goals, restrictions, budget, equipment, and watch pairing.[web:21][web:27]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-6 reveal"><div class="text-3xl mb-4">2</div><h3 class="font-bold text-xl mb-2">Plan</h3><p class="text-text-secondary">Generate meals, workouts, hydration targets, and shopping routes.[web:39][web:41]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-6 reveal"><div class="text-3xl mb-4">3</div><h3 class="font-bold text-xl mb-2">Execute</h3><p class="text-text-secondary">Log food, train with timers, check in at gyms, and use watch shortcuts.[web:3][web:28]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-6 reveal"><div class="text-3xl mb-4">4</div><h3 class="font-bold text-xl mb-2">Improve</h3><p class="text-text-secondary">AI and coaches adjust plans using adherence, recovery, and progress signals.[web:38][web:44]</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" data-slide="5">
+    <div class="gradient-mesh"><div class="blob" style="width:330px;height:330px;top:-70px;right:-50px;background:#FEF3C7;opacity:.08"></div><div class="blob" style="width:260px;height:260px;bottom:-50px;left:-40px;background:#14B8A6;opacity:.06"></div></div>
+    <div class="content">
+      <div class="logo-chip reveal mb-6"><span class="text-accent-1">04</span><span class="uppercase tracking-[0.18em] text-sm text-text-muted">Feature set</span></div>
+      <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] mb-8 reveal">Six modules create the core moat.</h2>
+      <div class="grid grid-cols-3 gap-6">
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-6 reveal"><div class="text-3xl mb-3">🥤</div><h3 class="text-xl font-bold mb-2">Food and drink log</h3><p class="text-text-secondary">Tracks meals, water, supplements, and quick-add entries with modern nutrition workflows.[web:9][web:15]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-6 reveal"><div class="text-3xl mb-3">📹</div><h3 class="text-xl font-bold mb-2">Exercise guidance</h3><p class="text-text-secondary">Video-based instruction, machine details, form cues, and what each move works.[web:34][web:41]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-6 reveal"><div class="text-3xl mb-3">⏱️</div><h3 class="text-xl font-bold mb-2">Live workout tools</h3><p class="text-text-secondary">Rest timers, exercise sequencing, set tracking, and wrist-accessible session cues.[web:23][web:28]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-6 reveal"><div class="text-3xl mb-3">📍</div><h3 class="text-xl font-bold mb-2">Gym check-ins</h3><p class="text-text-secondary">QR, NFC, or geofenced attendance that can support rewards and retention programs.[web:3][web:10]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-6 reveal"><div class="text-3xl mb-3">🏅</div><h3 class="text-xl font-bold mb-2">Motivation layer</h3><p class="text-text-secondary">Goals, streaks, badges, unlockables, and progress rewards to sustain engagement.[web:21][web:39]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-6 reveal"><div class="text-3xl mb-3">🧠</div><h3 class="text-xl font-bold mb-2">Coach control layer</h3><p class="text-text-secondary">AI drafts the plan while trainers and dietitians can refine it for each client.[web:38][web:44]</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" data-slide="6">
+    <div class="gradient-mesh"><div class="blob" style="width:350px;height:350px;top:-80px;right:-80px;background:#F97316;opacity:.08"></div><div class="blob" style="width:250px;height:250px;bottom:-60px;left:-40px;background:#14B8A6;opacity:.06"></div></div>
+    <div class="deco-shape" data-speed="0.04" style="width:220px;height:220px;bottom:12%;right:10%"></div>
+    <div class="content">
+      <div class="logo-chip reveal mb-6"><span class="text-accent-1">05</span><span class="uppercase tracking-[0.18em] text-sm text-text-muted">Market fit</span></div>
+      <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] mb-8 reveal">The category is moving toward broader lifestyle support.</h2>
+      <div class="grid grid-cols-3 gap-6">
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 reveal"><div class="text-sm uppercase tracking-[0.18em] text-text-muted mb-3">Trend 1</div><div class="text-5xl font-display stat-glow mb-4" data-count="3">0</div><p class="text-text-secondary text-lg">Three major capability clusters now matter together: personalization, wearable integration, and coaching workflows.[web:41][web:45]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 reveal"><div class="text-sm uppercase tracking-[0.18em] text-text-muted mb-3">Trend 2</div><div class="text-5xl font-display stat-glow mb-4" data-count="4">0</div><p class="text-text-secondary text-lg">Four daily decision areas can be unified in one app: meals, movement, recovery, and spending.[web:32][web:45]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 reveal"><div class="text-sm uppercase tracking-[0.18em] text-text-muted mb-3">Trend 3</div><div class="text-5xl font-display stat-glow mb-4" data-count="2">0</div><p class="text-text-secondary text-lg">Two buyer groups can be served at once: consumers and coaches, enabling hybrid monetization.[web:38][web:44]</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" data-slide="7">
+    <div class="gradient-mesh"><div class="blob" style="width:350px;height:350px;top:-90px;left:-70px;background:#14B8A6;opacity:.1"></div><div class="blob" style="width:250px;height:250px;bottom:-40px;right:-40px;background:#F97316;opacity:.08"></div></div>
+    <div class="content">
+      <div class="logo-chip reveal mb-6"><span class="text-accent-1">06</span><span class="uppercase tracking-[0.18em] text-sm text-text-muted">Business model</span></div>
+      <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] mb-8 reveal">Revenue can come from three aligned customer paths.</h2>
+      <div class="space-y-5 mt-6">
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-7 border-l-4 border-l-accent-1 reveal"><h3 class="text-2xl font-bold mb-2">Consumer subscription</h3><p class="text-text-secondary text-lg">Premium personalization, advanced watch support, richer insights, and deeper nutrition or workout planning create recurring subscription value.[web:41][web:45]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-7 border-l-4 border-l-accent-2 reveal"><h3 class="text-2xl font-bold mb-2">Coach seats</h3><p class="text-text-secondary text-lg">Trainers and dietitians pay for client management, reusable templates, adherence dashboards, and editing controls.[web:38][web:44]</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-7 border-l-4 border-l-accent-3 reveal"><h3 class="text-2xl font-bold mb-2">Partner channels</h3><p class="text-text-secondary text-lg">Gym check-in rewards and grocery or retail offers extend the platform into retention and affiliate revenue opportunities.[web:10][web:32]</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" data-slide="8">
+    <div class="gradient-mesh"><div class="blob" style="width:330px;height:330px;top:-80px;right:-50px;background:#F97316;opacity:.08"></div><div class="blob" style="width:270px;height:270px;bottom:-40px;left:-40px;background:#14B8A6;opacity:.06"></div></div>
+    <div class="content">
+      <div class="logo-chip reveal mb-6"><span class="text-accent-1">07</span><span class="uppercase tracking-[0.18em] text-sm text-text-muted">MVP</span></div>
+      <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] mb-8 reveal">Build the smallest version that proves daily use.</h2>
+      <div class="grid grid-cols-2 gap-6 mt-8">
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 reveal">
+          <h3 class="text-accent-1 text-2xl font-bold mb-4">Must ship first</h3>
+          <ul class="space-y-3 text-lg text-text-secondary">
+            <li class="reveal">Goal-based onboarding and health profile capture.[web:21][web:27]</li>
+            <li class="reveal">Daily dashboard with calories, hydration, workout, and streaks.[web:8]</li>
+            <li class="reveal">Food and drink logging with personalized meal suggestions.[web:9][web:15]</li>
+            <li class="reveal">Workout plans with form guidance and rest timers.[web:23][web:41]</li>
+            <li class="reveal">Basic AI plus coach editing workflow.[web:38][web:44]</li>
+          </ul>
+        </div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 reveal">
+          <h3 class="text-accent-2 text-2xl font-bold mb-4">Phase 2 expansion</h3>
+          <ul class="space-y-3 text-lg text-text-secondary">
+            <li class="reveal">Multi-store grocery optimization and deeper deal routing.</li>
+            <li class="reveal">Scaled gym partner check-in rewards network.[web:10]</li>
+            <li class="reveal">Marketplace workflows for premium coaches.[web:44]</li>
+            <li class="reveal">Deeper watch interactions and richer performance analytics.[web:28]</li>
+            <li class="reveal">Community or class-based engagement if retention data supports it.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" data-slide="9">
+    <div class="gradient-mesh"><div class="blob" style="width:360px;height:360px;top:-100px;left:-90px;background:#FEF3C7;opacity:.08"></div><div class="blob" style="width:280px;height:280px;bottom:-40px;right:-40px;background:#14B8A6;opacity:.06"></div></div>
+    <canvas class="particle-canvas-ambient" style="position:absolute;inset:0;z-index:1"></canvas>
+    <div class="content">
+      <div class="logo-chip reveal mb-6"><span class="text-accent-1">08</span><span class="uppercase tracking-[0.18em] text-sm text-text-muted">Roadmap</span></div>
+      <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] mb-8 reveal">Three phases take the concept from proof to platform.</h2>
+      <div class="grid grid-cols-3 gap-6 mt-8">
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 reveal"><div class="text-sm uppercase tracking-[0.18em] text-text-muted mb-3">Phase 1</div><h3 class="text-2xl font-bold mb-3">Core habit loop</h3><p class="text-text-secondary">Onboarding, dashboard, food logging, workouts, timers, and coach edits. Goal: prove daily engagement and retention.</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 reveal"><div class="text-sm uppercase tracking-[0.18em] text-text-muted mb-3">Phase 2</div><h3 class="text-2xl font-bold mb-3">Operational depth</h3><p class="text-text-secondary">Budget routing, watch expansion, gym check-ins, and stronger adherence reporting for users and coaches.</p></div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 reveal"><div class="text-sm uppercase tracking-[0.18em] text-text-muted mb-3">Phase 3</div><h3 class="text-2xl font-bold mb-3">Partner ecosystem</h3><p class="text-text-secondary">Retail offers, gym relationships, professional service tiers, and richer health adaptation logic.[web:44][web:45]</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" data-slide="10">
+    <div class="gradient-mesh"><div class="blob" style="width:340px;height:340px;top:-80px;right:-40px;background:#F97316;opacity:.08"></div><div class="blob" style="width:260px;height:260px;bottom:-40px;left:-30px;background:#14B8A6;opacity:.06"></div></div>
+    <div class="content">
+      <div class="logo-chip reveal mb-6"><span class="text-accent-1">09</span><span class="uppercase tracking-[0.18em] text-sm text-text-muted">What to fund</span></div>
+      <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] mb-8 reveal">Early capital should buy product learning, not just code.</h2>
+      <div class="grid grid-cols-2 gap-6 mt-8">
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 reveal">
+          <h3 class="text-2xl font-bold mb-5">Use of funds</h3>
+          <div class="space-y-4 text-lg text-text-secondary">
+            <div class="pricing-row"><span>Product build</span><div class="bar-track"><div class="bar-fill" data-width="36"></div></div><strong>36%</strong></div>
+            <div class="pricing-row"><span>Integrations</span><div class="bar-track"><div class="bar-fill" data-width="22"></div></div><strong>22%</strong></div>
+            <div class="pricing-row"><span>Content library</span><div class="bar-track"><div class="bar-fill" data-width="16"></div></div><strong>16%</strong></div>
+            <div class="pricing-row"><span>Partnership pilots</span><div class="bar-track"><div class="bar-fill" data-width="14"></div></div><strong>14%</strong></div>
+            <div class="pricing-row"><span>Growth testing</span><div class="bar-track"><div class="bar-fill" data-width="12"></div></div><strong>12%</strong></div>
+          </div>
+        </div>
+        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-3xl p-8 reveal">
+          <h3 class="text-2xl font-bold mb-5">Success metrics</h3>
+          <div class="space-y-4 text-lg text-text-secondary">
+            <p class="reveal"><strong class="text-accent-1">Activation:</strong> completed onboarding plus first meal and first workout logged in week one.</p>
+            <p class="reveal"><strong class="text-accent-2">Retention:</strong> repeat use across both food and workout features, not one isolated behavior.</p>
+            <p class="reveal"><strong class="text-accent-3">Monetization:</strong> consumer conversion, coach seat adoption, and partner pilot conversion.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" data-slide="11">
+    <div class="gradient-mesh">
+      <div class="blob" style="width:500px;height:500px;top:-100px;right:-100px;background:#F97316;opacity:.15"></div>
+      <div class="blob" style="width:320px;height:320px;bottom:-80px;left:-60px;background:#14B8A6;opacity:.12"></div>
+      <div class="blob" style="width:220px;height:220px;top:38%;left:20%;background:#FEF3C7;opacity:.1"></div>
+    </div>
+    <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1"></canvas>
+    <div class="content text-center">
+      <div class="text-[100px] mb-4 animate-[float_3s_ease-in-out_infinite] reveal">🚀</div>
+      <h2 class="font-display text-[clamp(2.5rem,5vw,4.6rem)] bg-linear-to-br from-accent-1 via-accent-2 to-accent-3 bg-clip-text text-transparent reveal">FitFlow Suite turns daily fitness into one connected operating system.</h2>
+      <p class="text-[clamp(1rem,1.7vw,1.35rem)] text-text-muted tracking-[5px] uppercase mt-6 reveal">Phone app • watch companion • coach platform</p>
+    </div>
+  </div>
+</div>
+<div class="nav-controls">
+  <button class="nav-btn" onclick="changeSlide(-1)">&#8249;</button>
+  <div class="slide-dots" id="dots"></div>
+  <button class="nav-btn" onclick="changeSlide(1)">&#8250;</button>
+  <span class="slide-counter" id="counter">1 / 11</span>
+</div>
+<script>
+let current=1;const total=document.querySelectorAll('.slide').length,dotsContainer=document.getElementById('dots'),counter=document.getElementById('counter');for(let i=1;i<=total;i++){const dot=document.createElement('div');dot.className='dot'+(i===1?' active':'');dot.onclick=()=>goToSlide(i);dotsContainer.appendChild(dot)}function goToSlide(n){const prev=document.querySelector('.slide.active');const next=document.querySelector(`.slide[data-slide="${n}"]`);if(prev)prev.classList.remove('active');if(next){next.classList.add('active');animateSlide(next)}current=n;updateNav()}function changeSlide(dir){let next=current+dir;if(next<1)next=total;if(next>total)next=1;goToSlide(next)}function updateNav(){document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===current));counter.textContent=current+' / '+total}document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();changeSlide(1)}if(e.key==='ArrowLeft'){e.preventDefault();changeSlide(-1)}});let touchStartX=0;document.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX});document.addEventListener('touchend',e=>{const diff=touchStartX-e.changedTouches[0].clientX;if(Math.abs(diff)>50)changeSlide(diff>0?1:-1)});
+function animateSlide(slide){slide.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transition='none';el.style.opacity='0';el.style.transform='translateY(20px)';el.offsetHeight;const delay=i*.08;el.style.transition=`opacity .35s ease ${delay}s, transform .35s ease ${delay}s`;el.style.opacity='1';el.style.transform='translateY(0px)'});animateSlideEffects(slide)}
+function animateSlideEffects(slide){slide.querySelectorAll('[data-count]:not(.counted)').forEach(el=>{el.classList.add('counted');const target=parseInt(el.dataset.count);let cur=0;const step=target/40;const timer=setInterval(()=>{cur+=step;if(cur>=target){cur=target;clearInterval(timer)}el.textContent=Math.round(cur).toLocaleString()},30)});slide.querySelectorAll('.bar-fill:not(.fill-init)').forEach((bar,i)=>{bar.classList.add('fill-init');bar.style.width='0%';bar.style.transition=`width .5s ease ${i*.08}s`;bar.offsetHeight;bar.style.width=bar.dataset.width+'%'})}
+document.addEventListener('mousemove',e=>{const spotlight=document.querySelector('.mouse-spotlight');if(spotlight){spotlight.style.background=`radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, rgba(249,115,22,0.06), transparent 40%)`}});
+(function(){let mouseX=window.innerWidth/2,mouseY=window.innerHeight/2;const cx=window.innerWidth/2,cy=window.innerHeight/2;document.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY});(function tick(){const ox=(mouseX-cx)/cx,oy=(mouseY-cy)/cy;document.querySelectorAll('.deco-shape').forEach(shape=>{const speed=parseFloat(shape.dataset.speed)||0.03;shape.style.transform=`translate(${ox*speed*100}px, ${oy*speed*100}px)`});requestAnimationFrame(tick)})()})();
+window.initParticles=function(canvas,options){if(!canvas)return;const ctx=canvas.getContext('2d');canvas.width=canvas.offsetWidth;canvas.height=canvas.offsetHeight;const interactive=options.interactive!==false,count=options.count||(interactive?55:18);let mx=-1000,my=-1000;const particles=Array.from({length:count},()=>({x:Math.random()*canvas.width,y:Math.random()*canvas.height,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,size:Math.random()*2.5+.8,alpha:Math.random()*.35+.1}));if(interactive){canvas.addEventListener('mousemove',e=>{const rect=canvas.getBoundingClientRect();mx=e.clientX-rect.left;my=e.clientY-rect.top});canvas.addEventListener('mouseleave',()=>{mx=-1000;my=-1000})}(function animate(){ctx.clearRect(0,0,canvas.width,canvas.height);particles.forEach(p=>{if(interactive){const dx=p.x-mx,dy=p.y-my,dist=Math.sqrt(dx*dx+dy*dy);if(dist<120){const force=(120-dist)/120*2;p.vx+=(dx/dist)*force*.1;p.vy+=(dy/dist)*force*.1}}p.vx*=.98;p.vy*=.98;p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=canvas.width;if(p.x>canvas.width)p.x=0;if(p.y<0)p.y=canvas.height;if(p.y>canvas.height)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fillStyle=`rgba(249,115,22,${p.alpha})`;ctx.fill()});requestAnimationFrame(animate)})()};
+document.querySelectorAll('.particle-canvas').forEach(c=>window.initParticles(c,{interactive:true,count:55}));document.querySelectorAll('.particle-canvas-ambient').forEach(c=>window.initParticles(c,{interactive:false,count:18}));try{animateSlide(document.querySelector('.slide.active'))}catch(e){console.warn(e)}
+</script>
+</body>
+</html>

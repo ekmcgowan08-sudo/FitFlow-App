@@ -1,0 +1,642 @@
+openapi: 3.1.0
+info:
+  title: FitFlow Suite API
+  version: 0.1.0
+  summary: API for a fitness lifestyle platform spanning nutrition, workouts, coaching, budgeting, gym check-ins, gamification, and wearable sync.
+  description: |
+    FitFlow Suite is an all-in-one fitness lifestyle platform for phone and smartwatch experiences.
+    This OpenAPI specification defines a starter REST API for member profiles, health goals,
+    nutrition logging, meal plans, grocery budgeting, workouts, exercise library content,
+    rest timers, gym check-ins, achievements, trainer-authored plans, and wearable summaries.
+servers:
+  - url: https://api.fitflowsuite.example/v1
+    description: Production
+  - url: https://sandbox.fitflowsuite.example/v1
+    description: Sandbox
+security:
+  - bearerAuth: []
+tags:
+  - name: Members
+  - name: Goals
+  - name: Nutrition
+  - name: Meal Plans
+  - name: Grocery
+  - name: Workouts
+  - name: Exercises
+  - name: Gyms
+  - name: Gamification
+  - name: Coaches
+  - name: Wearables
+paths:
+  /members:
+    get:
+      tags: [Members]
+      summary: List members
+      operationId: listMembers
+      responses:
+        '200':
+          description: Members returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Member'
+    post:
+      tags: [Members]
+      summary: Create member
+      operationId: createMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemberCreate'
+      responses:
+        '201':
+          description: Member created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+  /members/{memberId}:
+    get:
+      tags: [Members]
+      summary: Get member profile
+      operationId: getMember
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      responses:
+        '200':
+          description: Member profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+  /members/{memberId}/goals:
+    get:
+      tags: [Goals]
+      summary: List goals for a member
+      operationId: listGoals
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      responses:
+        '200':
+          description: Goals returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Goal'
+    post:
+      tags: [Goals]
+      summary: Create goal
+      operationId: createGoal
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoalCreate'
+      responses:
+        '201':
+          description: Goal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+  /members/{memberId}/nutrition/logs:
+    get:
+      tags: [Nutrition]
+      summary: List nutrition logs
+      operationId: listNutritionLogs
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Nutrition logs returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NutritionLog'
+    post:
+      tags: [Nutrition]
+      summary: Create nutrition log
+      operationId: createNutritionLog
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NutritionLogCreate'
+      responses:
+        '201':
+          description: Nutrition log created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NutritionLog'
+  /members/{memberId}/meal-plans:
+    get:
+      tags: [Meal Plans]
+      summary: List meal plans
+      operationId: listMealPlans
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      responses:
+        '200':
+          description: Meal plans returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MealPlan'
+    post:
+      tags: [Meal Plans]
+      summary: Create meal plan
+      operationId: createMealPlan
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MealPlanCreate'
+      responses:
+        '201':
+          description: Meal plan created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealPlan'
+  /members/{memberId}/grocery-plans:
+    get:
+      tags: [Grocery]
+      summary: List grocery plans
+      operationId: listGroceryPlans
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      responses:
+        '200':
+          description: Grocery plans returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GroceryPlan'
+  /members/{memberId}/workout-plans:
+    get:
+      tags: [Workouts]
+      summary: List workout plans
+      operationId: listWorkoutPlans
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      responses:
+        '200':
+          description: Workout plans returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkoutPlan'
+    post:
+      tags: [Workouts]
+      summary: Create workout plan
+      operationId: createWorkoutPlan
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkoutPlanCreate'
+      responses:
+        '201':
+          description: Workout plan created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutPlan'
+  /exercises:
+    get:
+      tags: [Exercises]
+      summary: Search exercise library
+      operationId: listExercises
+      parameters:
+        - in: query
+          name: query
+          schema:
+            type: string
+        - in: query
+          name: equipment
+          schema:
+            type: string
+        - in: query
+          name: muscleGroup
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exercise library results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Exercise'
+  /gyms/check-ins:
+    post:
+      tags: [Gyms]
+      summary: Create a gym check-in
+      operationId: createGymCheckIn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GymCheckInCreate'
+      responses:
+        '201':
+          description: Check-in created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GymCheckIn'
+  /members/{memberId}/achievements:
+    get:
+      tags: [Gamification]
+      summary: List achievements, badges, and streaks
+      operationId: listAchievements
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      responses:
+        '200':
+          description: Achievements returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  streak:
+                    $ref: '#/components/schemas/Streak'
+                  badges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Badge'
+                  achievements:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Achievement'
+  /coaches:
+    get:
+      tags: [Coaches]
+      summary: List coaches
+      operationId: listCoaches
+      responses:
+        '200':
+          description: Coaches returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Coach'
+  /members/{memberId}/coach-assignments:
+    post:
+      tags: [Coaches]
+      summary: Assign AI or human coach
+      operationId: createCoachAssignment
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoachAssignmentCreate'
+      responses:
+        '201':
+          description: Coach assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachAssignment'
+  /members/{memberId}/wearables/daily-summary:
+    get:
+      tags: [Wearables]
+      summary: Get wearable daily summary
+      operationId: getWearableDailySummary
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+        - in: query
+          name: date
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Wearable summary returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WearableDailySummary'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    MemberId:
+      in: path
+      name: memberId
+      required: true
+      schema:
+        type: string
+  schemas:
+    Member:
+      type: object
+      required: [id, email, firstName, lastName, preferences, healthProfile]
+      properties:
+        id: { type: string, example: mem_001 }
+        email: { type: string, format: email, example: alex@example.com }
+        firstName: { type: string, example: Alex }
+        lastName: { type: string, example: Carter }
+        birthDate: { type: string, format: date, example: '1992-05-14' }
+        sexAtBirth: { type: string, enum: [female, male, intersex, undisclosed] }
+        heightCm: { type: number, example: 178 }
+        weightKg: { type: number, example: 82.4 }
+        preferences:
+          $ref: '#/components/schemas/Preferences'
+        healthProfile:
+          $ref: '#/components/schemas/HealthProfile'
+    MemberCreate:
+      type: object
+      required: [email, firstName, lastName]
+      properties:
+        email: { type: string, format: email }
+        firstName: { type: string }
+        lastName: { type: string }
+        birthDate: { type: string, format: date }
+        sexAtBirth: { type: string }
+        heightCm: { type: number }
+        weightKg: { type: number }
+    Preferences:
+      type: object
+      properties:
+        goalStyle: { type: string, enum: [fat_loss, muscle_gain, maintenance, endurance, recomposition] }
+        workoutLocation: { type: string, enum: [home, gym, hybrid] }
+        dietStyle: { type: string, enum: [balanced, high_protein, low_carb, vegetarian, vegan, pescatarian] }
+        themeColor: { type: string, example: '#0F766E' }
+        coachPreference: { type: string, enum: [ai, human, hybrid] }
+        smartwatchPlatform: { type: string, enum: [apple_health, wear_os, garmin, fitbit, none] }
+    HealthProfile:
+      type: object
+      properties:
+        allergies:
+          type: array
+          items: { type: string }
+        medicalNotes:
+          type: array
+          items: { type: string }
+        calorieTarget:
+          type: integer
+        proteinTargetGrams:
+          type: integer
+        carbTargetGrams:
+          type: integer
+        fatTargetGrams:
+          type: integer
+        waterTargetOz:
+          type: integer
+    Goal:
+      type: object
+      properties:
+        id: { type: string, example: goal_001 }
+        memberId: { type: string, example: mem_001 }
+        category: { type: string, enum: [weight, strength, nutrition, consistency, sleep, budget] }
+        title: { type: string, example: Lose 8 pounds in 12 weeks }
+        targetValue: { type: number, example: 8 }
+        targetUnit: { type: string, example: pounds }
+        dueDate: { type: string, format: date }
+        status: { type: string, enum: [active, paused, achieved, archived] }
+    GoalCreate:
+      allOf:
+        - $ref: '#/components/schemas/Goal'
+    NutritionLog:
+      type: object
+      properties:
+        id: { type: string, example: nut_001 }
+        memberId: { type: string, example: mem_001 }
+        loggedAt: { type: string, format: date-time }
+        mealType: { type: string, enum: [breakfast, lunch, dinner, snack, drink] }
+        itemName: { type: string, example: Greek yogurt parfait }
+        servingDescription: { type: string, example: 1 bowl }
+        calories: { type: integer, example: 320 }
+        proteinGrams: { type: number, example: 24 }
+        carbsGrams: { type: number, example: 31 }
+        fatGrams: { type: number, example: 9 }
+        waterOz: { type: number, example: 12 }
+    NutritionLogCreate:
+      allOf:
+        - $ref: '#/components/schemas/NutritionLog'
+    MealPlan:
+      type: object
+      properties:
+        id: { type: string, example: mealplan_001 }
+        memberId: { type: string, example: mem_001 }
+        title: { type: string, example: High-protein fat-loss week }
+        dailyCalories: { type: integer, example: 2100 }
+        meals:
+          type: array
+          items:
+            $ref: '#/components/schemas/MealPlanMeal'
+    MealPlanMeal:
+      type: object
+      properties:
+        dayOfWeek: { type: string, example: Monday }
+        mealType: { type: string, example: lunch }
+        recipeName: { type: string, example: Chicken quinoa bowl }
+        calories: { type: integer, example: 540 }
+        estimatedCostUsd: { type: number, example: 4.8 }
+    MealPlanCreate:
+      allOf:
+        - $ref: '#/components/schemas/MealPlan'
+    GroceryPlan:
+      type: object
+      properties:
+        id: { type: string, example: groc_001 }
+        memberId: { type: string, example: mem_001 }
+        storeRecommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreRecommendation'
+        totalEstimatedCostUsd: { type: number, example: 74.21 }
+    StoreRecommendation:
+      type: object
+      properties:
+        storeName: { type: string, example: Kroger }
+        itemName: { type: string, example: Chicken breast }
+        quantity: { type: string, example: 2 lb }
+        unitPriceUsd: { type: number, example: 7.99 }
+        bestDeal: { type: boolean, example: true }
+    WorkoutPlan:
+      type: object
+      properties:
+        id: { type: string, example: wkp_001 }
+        memberId: { type: string, example: mem_001 }
+        title: { type: string, example: 4-day strength and conditioning }
+        coachSource: { type: string, enum: [ai, human] }
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutSession'
+    WorkoutPlanCreate:
+      allOf:
+        - $ref: '#/components/schemas/WorkoutPlan'
+    WorkoutSession:
+      type: object
+      properties:
+        dayOfWeek: { type: string, example: Tuesday }
+        focus: { type: string, example: Upper body push }
+        estimatedMinutes: { type: integer, example: 52 }
+        restTimerSeconds: { type: integer, example: 75 }
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutExercise'
+    WorkoutExercise:
+      type: object
+      properties:
+        exerciseId: { type: string, example: ex_001 }
+        sets: { type: integer, example: 4 }
+        reps: { type: string, example: 8-10 }
+        workSeconds: { type: integer, nullable: true }
+        note: { type: string, example: Controlled tempo, full range of motion }
+    Exercise:
+      type: object
+      properties:
+        id: { type: string, example: ex_001 }
+        name: { type: string, example: Leg press }
+        category: { type: string, enum: [strength, cardio, mobility, recovery] }
+        equipment: { type: string, example: Leg press machine }
+        primaryMuscles:
+          type: array
+          items: { type: string }
+        secondaryMuscles:
+          type: array
+          items: { type: string }
+        whyItWorks: { type: string, example: Builds lower-body strength with guided stability. }
+        howToVideoUrl: { type: string, format: uri, example: https://videos.fitflowsuite.example/exercises/leg-press.mp4 }
+        instructions:
+          type: array
+          items: { type: string }
+    GymCheckInCreate:
+      type: object
+      required: [memberId, gymId, checkedInAt]
+      properties:
+        memberId: { type: string, example: mem_001 }
+        gymId: { type: string, example: gym_001 }
+        checkedInAt: { type: string, format: date-time }
+        source: { type: string, enum: [qr, geofence, manual] }
+    GymCheckIn:
+      allOf:
+        - $ref: '#/components/schemas/GymCheckInCreate'
+        - type: object
+          properties:
+            id: { type: string, example: chk_001 }
+            pointsEarned: { type: integer, example: 25 }
+    Streak:
+      type: object
+      properties:
+        currentDays: { type: integer, example: 11 }
+        longestDays: { type: integer, example: 29 }
+        streakType: { type: string, example: workout_logging }
+    Badge:
+      type: object
+      properties:
+        id: { type: string, example: badge_001 }
+        name: { type: string, example: Seven-Day Streak }
+        unlockedAt: { type: string, format: date-time }
+    Achievement:
+      type: object
+      properties:
+        id: { type: string, example: ach_001 }
+        title: { type: string, example: Logged meals for 14 straight days }
+        progressPercent: { type: number, example: 100 }
+        status: { type: string, enum: [locked, in_progress, unlocked] }
+    Coach:
+      type: object
+      properties:
+        id: { type: string, example: coach_001 }
+        type: { type: string, enum: [ai, human] }
+        displayName: { type: string, example: Coach Maya }
+        specialties:
+          type: array
+          items: { type: string }
+    CoachAssignmentCreate:
+      type: object
+      required: [coachId, startsOn]
+      properties:
+        coachId: { type: string, example: coach_001 }
+        startsOn: { type: string, format: date }
+        notes: { type: string, example: Focus on beginner strength, budget meals, and accountability. }
+    CoachAssignment:
+      allOf:
+        - $ref: '#/components/schemas/CoachAssignmentCreate'
+        - type: object
+          properties:
+            id: { type: string, example: asn_001 }
+            memberId: { type: string, example: mem_001 }
+    WearableDailySummary:
+      type: object
+      properties:
+        memberId: { type: string, example: mem_001 }
+        date: { type: string, format: date }
+        steps: { type: integer, example: 10422 }
+        activeCalories: { type: integer, example: 612 }
+        exerciseMinutes: { type: integer, example: 48 }
+        restingHeartRate: { type: integer, example: 58 }
+        sleepHours: { type: number, example: 7.6 }

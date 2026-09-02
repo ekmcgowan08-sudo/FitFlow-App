@@ -1,0 +1,133 @@
+// FitFlow Suite — Prisma schema (identity, roles, and session slice)
+// This mirrors the existing FitFlow Suite logical data model (users, roles,
+// user_roles, coach_profiles, coach_clients) so the middleware in this module
+// integrates directly with the app's real Prisma Client types.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & access
+// ---------------------------------------------------------------------------
+
+enum RoleCode {
+  ADMIN
+  COACH
+  SUBSCRIBER
+  USER
+  GYM_PARTNER
+  SUPPORT_OPS
+
+  @@map("role_code")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique @db.VarChar(320)
+  passwordHash String   @map("password_hash")
+  status       String   @default("active") @db.VarChar(32)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  roles         UserRole[]
+  refreshTokens RefreshToken[]
+  profile       UserProfile?
+  coachProfile  CoachProfile?
+
+  coachedClients CoachClient[] @relation("CoachToClients")
+  clientOfCoach  CoachClient[] @relation("ClientToCoach")
+
+  @@map("users")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  code        RoleCode @unique
+  description String?
+
+  users UserRole[]
+
+  @@map("roles")
+}
+
+// Explicit many-to-many join so a user can hold multiple roles
+// (e.g. a coach who is also a paying subscriber).
+model UserRole {
+  userId String @map("user_id")
+  roleId Int    @map("role_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  revokedAt  DateTime? @map("revoked_at")
+  replacedBy String?   @map("replaced_by")
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model UserProfile {
+  userId    String  @id @map("user_id")
+  firstName String? @map("first_name") @db.VarChar(100)
+  lastName  String? @map("last_name") @db.VarChar(100)
+  timezone  String  @db.VarChar(64)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model CoachProfile {
+  userId             String  @id @map("user_id")
+  displayName        String  @map("display_name") @db.VarChar(255)
+  acceptsNewClients  Boolean @default(true) @map("accepts_new_clients")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("coach_profiles")
+}
+
+model CoachClient {
+  coachUserId  String @map("coach_user_id")
+  clientUserId String @map("client_user_id")
+  status       String @default("active") @map("relationship_status") @db.VarChar(32)
+
+  coach  User @relation("CoachToClients", fields: [coachUserId], references: [id], onDelete: Cascade)
+  client User @relation("ClientToCoach", fields: [clientUserId], references: [id], onDelete: Cascade)
+
+  @@id([coachUserId, clientUserId])
+  @@map("coach_clients")
+}
+
+// ---------------------------------------------------------------------------
+// A sample owned resource used throughout the audit examples
+// ---------------------------------------------------------------------------
+
+model WorkoutSession {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  startedAt   DateTime  @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  status      String    @default("in_progress") @db.VarChar(32)
+
+  @@index([userId, startedAt(sort: Desc)])
+  @@map("workout_sessions")
+}

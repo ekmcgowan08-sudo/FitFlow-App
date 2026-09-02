@@ -1,0 +1,388 @@
+{
+  "members": [
+    {
+      "id": "mem_001",
+      "email": "alex.carter@example.com",
+      "firstName": "Alex",
+      "lastName": "Carter",
+      "birthDate": "1992-05-14",
+      "sexAtBirth": "male",
+      "heightCm": 178,
+      "weightKg": 82.4,
+      "preferences": {
+        "goalStyle": "fat_loss",
+        "workoutLocation": "hybrid",
+        "dietStyle": "high_protein",
+        "themeColor": "#0F766E",
+        "coachPreference": "hybrid",
+        "smartwatchPlatform": "apple_health"
+      },
+      "healthProfile": {
+        "allergies": [
+          "shellfish"
+        ],
+        "medicalNotes": [
+          "mild lactose sensitivity"
+        ],
+        "calorieTarget": 2100,
+        "proteinTargetGrams": 190,
+        "carbTargetGrams": 180,
+        "fatTargetGrams": 70,
+        "waterTargetOz": 100
+      }
+    },
+    {
+      "id": "mem_002",
+      "email": "jordan.lee@example.com",
+      "firstName": "Jordan",
+      "lastName": "Lee",
+      "birthDate": "1988-10-02",
+      "sexAtBirth": "female",
+      "heightCm": 165,
+      "weightKg": 64.2,
+      "preferences": {
+        "goalStyle": "muscle_gain",
+        "workoutLocation": "gym",
+        "dietStyle": "balanced",
+        "themeColor": "#7C3AED",
+        "coachPreference": "human",
+        "smartwatchPlatform": "garmin"
+      },
+      "healthProfile": {
+        "allergies": [
+          "peanuts"
+        ],
+        "medicalNotes": [
+          "prefers lower impact cardio"
+        ],
+        "calorieTarget": 2400,
+        "proteinTargetGrams": 150,
+        "carbTargetGrams": 260,
+        "fatTargetGrams": 80,
+        "waterTargetOz": 90
+      }
+    }
+  ],
+  "goals": [
+    {
+      "id": "goal_001",
+      "memberId": "mem_001",
+      "category": "weight",
+      "title": "Lose 8 pounds in 12 weeks",
+      "targetValue": 8,
+      "targetUnit": "pounds",
+      "dueDate": "2026-10-20",
+      "status": "active"
+    },
+    {
+      "id": "goal_002",
+      "memberId": "mem_002",
+      "category": "strength",
+      "title": "Increase squat working weight by 20 pounds",
+      "targetValue": 20,
+      "targetUnit": "pounds",
+      "dueDate": "2026-11-15",
+      "status": "active"
+    }
+  ],
+  "coaches": [
+    {
+      "id": "coach_001",
+      "type": "human",
+      "displayName": "Coach Maya",
+      "specialties": [
+        "strength",
+        "nutrition",
+        "habit building"
+      ]
+    },
+    {
+      "id": "coach_ai_001",
+      "type": "ai",
+      "displayName": "FitFlow AI Coach",
+      "specialties": [
+        "meal planning",
+        "adaptive programming",
+        "recovery guidance"
+      ]
+    }
+  ],
+  "coachAssignments": [
+    {
+      "id": "asn_001",
+      "memberId": "mem_001",
+      "coachId": "coach_ai_001",
+      "startsOn": "2026-07-28",
+      "notes": "Daily feedback and weekly plan refresh."
+    },
+    {
+      "id": "asn_002",
+      "memberId": "mem_002",
+      "coachId": "coach_001",
+      "startsOn": "2026-07-28",
+      "notes": "In-person programming with monthly progress review."
+    }
+  ],
+  "exercises": [
+    {
+      "id": "ex_001",
+      "name": "Leg Press",
+      "category": "strength",
+      "equipment": "Leg press machine",
+      "primaryMuscles": [
+        "quadriceps",
+        "glutes"
+      ],
+      "secondaryMuscles": [
+        "hamstrings"
+      ],
+      "whyItWorks": "Builds lower-body strength with guided stability.",
+      "howToVideoUrl": "https://videos.fitflowsuite.example/exercises/leg-press.mp4",
+      "instructions": [
+        "Set feet shoulder-width on platform.",
+        "Lower with control until knees reach a comfortable bend.",
+        "Drive through mid-foot to return without locking knees."
+      ]
+    },
+    {
+      "id": "ex_002",
+      "name": "Dumbbell Bench Press",
+      "category": "strength",
+      "equipment": "Adjustable bench and dumbbells",
+      "primaryMuscles": [
+        "chest"
+      ],
+      "secondaryMuscles": [
+        "triceps",
+        "front delts"
+      ],
+      "whyItWorks": "Improves pressing strength and shoulder stability.",
+      "howToVideoUrl": "https://videos.fitflowsuite.example/exercises/dumbbell-bench-press.mp4",
+      "instructions": [
+        "Plant feet firmly on the floor.",
+        "Lower dumbbells to chest level with elbows slightly tucked.",
+        "Press up until arms are extended with control."
+      ]
+    },
+    {
+      "id": "ex_003",
+      "name": "Treadmill Incline Walk",
+      "category": "cardio",
+      "equipment": "Treadmill",
+      "primaryMuscles": [
+        "calves",
+        "glutes"
+      ],
+      "secondaryMuscles": [
+        "hamstrings"
+      ],
+      "whyItWorks": "Raises heart rate with low joint impact.",
+      "howToVideoUrl": "https://videos.fitflowsuite.example/exercises/treadmill-incline-walk.mp4",
+      "instructions": [
+        "Set incline and speed to a brisk but sustainable effort.",
+        "Maintain upright posture and natural arm swing.",
+        "Breathe rhythmically for the full interval."
+      ]
+    }
+  ],
+  "mealPlans": [
+    {
+      "id": "mealplan_001",
+      "memberId": "mem_001",
+      "title": "High-protein fat-loss week",
+      "dailyCalories": 2100,
+      "meals": [
+        {
+          "dayOfWeek": "Monday",
+          "mealType": "breakfast",
+          "recipeName": "Greek yogurt parfait",
+          "calories": 320,
+          "estimatedCostUsd": 2.75
+        },
+        {
+          "dayOfWeek": "Monday",
+          "mealType": "lunch",
+          "recipeName": "Chicken quinoa bowl",
+          "calories": 540,
+          "estimatedCostUsd": 4.8
+        },
+        {
+          "dayOfWeek": "Monday",
+          "mealType": "dinner",
+          "recipeName": "Salmon rice plate",
+          "calories": 610,
+          "estimatedCostUsd": 6.95
+        }
+      ]
+    }
+  ],
+  "groceryPlans": [
+    {
+      "id": "groc_001",
+      "memberId": "mem_001",
+      "totalEstimatedCostUsd": 74.21,
+      "storeRecommendations": [
+        {
+          "storeName": "Kroger",
+          "itemName": "Chicken breast",
+          "quantity": "2 lb",
+          "unitPriceUsd": 7.99,
+          "bestDeal": true
+        },
+        {
+          "storeName": "Aldi",
+          "itemName": "Greek yogurt",
+          "quantity": "32 oz",
+          "unitPriceUsd": 3.49,
+          "bestDeal": true
+        },
+        {
+          "storeName": "Walmart",
+          "itemName": "Frozen berries",
+          "quantity": "16 oz",
+          "unitPriceUsd": 4.28,
+          "bestDeal": false
+        }
+      ]
+    }
+  ],
+  "workoutPlans": [
+    {
+      "id": "wkp_001",
+      "memberId": "mem_001",
+      "title": "4-day strength and conditioning",
+      "coachSource": "ai",
+      "sessions": [
+        {
+          "dayOfWeek": "Tuesday",
+          "focus": "Upper body push",
+          "estimatedMinutes": 52,
+          "restTimerSeconds": 75,
+          "exercises": [
+            {
+              "exerciseId": "ex_002",
+              "sets": 4,
+              "reps": "8-10",
+              "workSeconds": null,
+              "note": "Use challenging but clean form."
+            }
+          ]
+        },
+        {
+          "dayOfWeek": "Thursday",
+          "focus": "Lower body strength",
+          "estimatedMinutes": 58,
+          "restTimerSeconds": 90,
+          "exercises": [
+            {
+              "exerciseId": "ex_001",
+              "sets": 4,
+              "reps": "10-12",
+              "workSeconds": null,
+              "note": "Full depth within comfort range."
+            }
+          ]
+        },
+        {
+          "dayOfWeek": "Saturday",
+          "focus": "Conditioning",
+          "estimatedMinutes": 30,
+          "restTimerSeconds": 30,
+          "exercises": [
+            {
+              "exerciseId": "ex_003",
+              "sets": 1,
+              "reps": "20 min",
+              "workSeconds": 1200,
+              "note": "Stay in moderate intensity zone."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "nutritionLogs": [
+    {
+      "id": "nut_001",
+      "memberId": "mem_001",
+      "loggedAt": "2026-07-28T08:15:00Z",
+      "mealType": "breakfast",
+      "itemName": "Greek yogurt parfait",
+      "servingDescription": "1 bowl",
+      "calories": 320,
+      "proteinGrams": 24,
+      "carbsGrams": 31,
+      "fatGrams": 9,
+      "waterOz": 12
+    },
+    {
+      "id": "nut_002",
+      "memberId": "mem_001",
+      "loggedAt": "2026-07-28T12:30:00Z",
+      "mealType": "lunch",
+      "itemName": "Chicken quinoa bowl",
+      "servingDescription": "1 bowl",
+      "calories": 540,
+      "proteinGrams": 46,
+      "carbsGrams": 42,
+      "fatGrams": 16,
+      "waterOz": 16
+    }
+  ],
+  "gyms": [
+    {
+      "id": "gym_001",
+      "name": "Fit House Sharonville",
+      "city": "Sharonville",
+      "state": "OH"
+    }
+  ],
+  "gymCheckIns": [
+    {
+      "id": "chk_001",
+      "memberId": "mem_001",
+      "gymId": "gym_001",
+      "checkedInAt": "2026-07-28T22:05:00Z",
+      "source": "qr",
+      "pointsEarned": 25
+    }
+  ],
+  "gamification": {
+    "streaks": [
+      {
+        "memberId": "mem_001",
+        "currentDays": 11,
+        "longestDays": 29,
+        "streakType": "workout_logging"
+      }
+    ],
+    "badges": [
+      {
+        "id": "badge_001",
+        "memberId": "mem_001",
+        "name": "Seven-Day Streak",
+        "unlockedAt": "2026-07-24T18:00:00Z"
+      }
+    ],
+    "achievements": [
+      {
+        "id": "ach_001",
+        "memberId": "mem_001",
+        "title": "Logged meals for 14 straight days",
+        "progressPercent": 100,
+        "status": "unlocked"
+      }
+    ]
+  },
+  "wearableDailySummaries": [
+    {
+      "memberId": "mem_001",
+      "date": "2026-07-28",
+      "steps": 10422,
+      "activeCalories": 612,
+      "exerciseMinutes": 48,
+      "restingHeartRate": 58,
+      "sleepHours": 7.6
+    }
+  ]
+}

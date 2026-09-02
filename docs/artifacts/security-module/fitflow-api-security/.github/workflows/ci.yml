@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    name: Type-check, unit tests, migrations, build
+    runs-on: ubuntu-latest
+
+    # Real Postgres, used only to prove prisma/migrations/ applies
+    # cleanly (the "migrations" step below) — the Jest suite itself runs
+    # against a manual Prisma mock (__mocks__/@prisma/client.ts) and does
+    # not touch this database.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fitflow
+          POSTGRES_PASSWORD: fitflow_ci_password
+          POSTGRES_DB: fitflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fitflow -d fitflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://fitflow:fitflow_ci_password@localhost:5432/fitflow?schema=public
+      JWT_ACCESS_SECRET: ci_access_secret_32_characters_min
+      REFRESH_TOKEN_PEPPER: ci_refresh_pepper_32_characters_min
+      JWT_ISSUER: fitflow-suite
+      JWT_AUDIENCE: fitflow-suite-clients
+      ACCESS_TOKEN_TTL_SECONDS: "900"
+      REFRESH_TOKEN_TTL_DAYS: "30"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema prisma/schema.prisma
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm test -- --ci
+
+      - name: Apply Prisma migrations against a real database
+        run: npx prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Build
+        run: npm run build

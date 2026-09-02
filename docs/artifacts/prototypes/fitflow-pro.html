@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitFlow Pro</title>
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem; --space-16: 4rem;
+      --color-bg: #f6f5f1; --color-surface: #fbfaf8; --color-surface-2: #f1efea; --color-surface-offset: #e7e4dd; --color-border: #d7d2c8;
+      --color-text: #221f18; --color-text-muted: #68645c; --color-text-faint: #9d978d; --color-text-inverse: #f8f7f3;
+      --color-primary: #0b7a73; --color-primary-hover: #085a55; --color-primary-highlight: #d8ebe8;
+      --color-success: #4c8524; --color-blue: #1b6fb0; --color-gold: #b88b17; --color-purple: #7b4cc2; --color-error: #a33e74;
+      --radius-sm: 0.4rem; --radius-md: 0.8rem; --radius-lg: 1rem; --radius-xl: 1.4rem; --radius-full: 999px;
+      --shadow-sm: 0 2px 6px rgba(22,20,16,.06); --shadow-md: 0 16px 36px rgba(22,20,16,.1); --shadow-lg: 0 24px 60px rgba(22,20,16,.14);
+      --font-body: 'Satoshi', 'Inter', sans-serif; --font-display: 'General Sans', 'Satoshi', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg: #111312; --color-surface: #181b19; --color-surface-2: #202422; --color-surface-offset: #282d2a; --color-border: #333935;
+      --color-text: #e7e5df; --color-text-muted: #b5b0a6; --color-text-faint: #7d7a73; --color-text-inverse: #151715;
+      --color-primary: #4fb7aa; --color-primary-hover: #72cbc0; --color-primary-highlight: rgba(79,183,170,.14);
+      --color-success: #7fb24f; --color-blue: #78aee3; --color-gold: #dfb85a; --color-purple: #b287f0; --color-error: #db75ad;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,.22); --shadow-md: 0 18px 44px rgba(0,0,0,.28); --shadow-lg: 0 28px 70px rgba(0,0,0,.42);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      min-height: 100dvh; font-family: var(--font-body); font-size: var(--text-base); line-height: 1.5;
+      background: radial-gradient(circle at top right, rgba(79,183,170,.12), transparent 28%), var(--color-bg); color: var(--color-text);
+      overflow: hidden;
+    }
+    button, input, select { font: inherit; color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    img, svg { display: block; max-width: 100%; }
+    .app-shell {
+      display: grid; grid-template-columns: 290px 1fr 330px; height: 100dvh;
+      background: var(--color-bg);
+    }
+    .sidebar, .coach-panel { background: color-mix(in srgb, var(--color-surface) 86%, transparent); border-right: 1px solid rgba(255,255,255,.05); overflow-y: auto; }
+    .coach-panel { border-right: none; border-left: 1px solid rgba(255,255,255,.05); }
+    .sidebar, .coach-panel, .main { padding: var(--space-6); }
+    .sidebar { display: flex; flex-direction: column; gap: var(--space-6); }
+    .brand { display: flex; align-items: center; gap: var(--space-4); }
+    .brand-mark { width: 48px; height: 48px; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 60%, #000)); box-shadow: var(--shadow-md); }
+    .brand-copy h1 { font-family: var(--font-display); font-size: var(--text-lg); line-height: 1; }
+    .brand-copy p { color: var(--color-text-muted); font-size: var(--text-sm); margin-top: 4px; }
+    .theme-toggle { margin-left: auto; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--color-border); background: var(--color-surface-2); cursor: pointer; }
+    .nav-group { display: grid; gap: var(--space-2); }
+    .nav-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .12em; color: var(--color-text-faint); margin-bottom: var(--space-2); }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: var(--radius-lg); color: var(--color-text-muted);
+      border: 1px solid transparent; transition: .18s ease;
+    }
+    .nav-item.active, .nav-item:hover { background: var(--color-primary-highlight); color: var(--color-text); border-color: rgba(79,183,170,.16); }
+    .nav-icon { width: 18px; height: 18px; opacity: .95; }
+    .mini-watch {
+      padding: var(--space-5); border-radius: 28px; background: linear-gradient(180deg, #050606, #191d1b); border: 1px solid #2b322e; box-shadow: var(--shadow-lg);
+    }
+    .watch-face { aspect-ratio: 1 / 1; border-radius: 24px; padding: var(--space-4); background: radial-gradient(circle at top, rgba(79,183,170,.18), transparent 40%), #0d1110; display: grid; gap: 10px; }
+    .watch-ring { height: 84px; border-radius: 20px; border: 8px solid rgba(79,183,170,.18); position: relative; }
+    .watch-ring::after { content: ''; position: absolute; inset: -8px; border-radius: inherit; border: 8px solid transparent; border-top-color: var(--color-primary); border-right-color: var(--color-blue); transform: rotate(35deg); }
+    .watch-stats { display: flex; justify-content: space-between; color: var(--color-text-muted); font-size: var(--text-xs); }
+    .main { overflow-y: auto; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6); }
+    .page-title h2 { font-family: var(--font-display); font-size: var(--text-xl); letter-spacing: -.03em; }
+    .page-title p { color: var(--color-text-muted); margin-top: 6px; max-width: 60ch; }
+    .top-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn { padding: 13px 18px; border-radius: var(--radius-full); border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer; }
+    .btn-primary { background: var(--color-primary); color: #08110f; border-color: transparent; font-weight: 700; }
+    .hero-grid { display: grid; grid-template-columns: 1.3fr .95fr; gap: var(--space-6); margin-bottom: var(--space-6); }
+    .card { background: color-mix(in srgb, var(--color-surface) 92%, transparent); border: 1px solid rgba(255,255,255,.05); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); }
+    .hero-card { padding: var(--space-6); position: relative; overflow: hidden; }
+    .hero-card::before { content: ''; position: absolute; inset: auto -80px -80px auto; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(79,183,170,.18), transparent 70%); }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-full); background: var(--color-primary-highlight); color: var(--color-primary-hover); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; margin-bottom: var(--space-4); }
+    .hero-card h3 { font-family: var(--font-display); font-size: clamp(1.7rem, 1.2rem + 1.2vw, 2.2rem); max-width: 14ch; line-height: 1.02; margin-bottom: var(--space-4); }
+    .hero-card p { color: var(--color-text-muted); max-width: 55ch; }
+    .goal-row, .kpi-grid, .plan-grid, .exercise-grid, .budget-list, .achievement-row { display: grid; gap: var(--space-4); }
+    .goal-row { grid-template-columns: repeat(3, 1fr); margin-top: var(--space-5); }
+    .goal-pill { padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface-2); }
+    .goal-pill strong, .metric strong, .coach-card strong, .budget-item strong { display: block; font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
+    .goal-pill span, .metric span, .subtle, .budget-item span, .check-item span { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .split-card { padding: var(--space-6); display: grid; gap: var(--space-4); }
+    .kpi-grid { grid-template-columns: repeat(4, 1fr); margin-bottom: var(--space-6); }
+    .metric { padding: var(--space-5); }
+    .section { margin-bottom: var(--space-6); }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: var(--space-4); margin-bottom: var(--space-4); }
+    .section-head h3 { font-size: var(--text-lg); }
+    .section-head p { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .plan-grid { grid-template-columns: 1.1fr .9fr; }
+    .meal-plan, .training-plan, .budget-card, .checkin-card, .achievements-card { padding: var(--space-6); }
+    .meal-list, .budget-list, .check-list { display: grid; gap: 14px; margin-top: var(--space-4); }
+    .meal-item, .budget-item, .check-item, .exercise-item { padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface-2); }
+    .meal-item header, .budget-item header, .exercise-top { display: flex; justify-content: space-between; gap: var(--space-4); align-items: start; margin-bottom: 10px; }
+    .tag-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .tag { padding: 7px 10px; border-radius: var(--radius-full); background: rgba(79,183,170,.12); color: var(--color-primary-hover); font-size: var(--text-xs); }
+    .exercise-grid { grid-template-columns: repeat(2, 1fr); }
+    .video-box { margin-top: 12px; padding: 14px; border-radius: var(--radius-lg); background: linear-gradient(145deg, rgba(79,183,170,.14), rgba(123,76,194,.12)); min-height: 110px; display: flex; align-items: end; }
+    .pause-timer { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: var(--radius-lg); background: var(--color-primary-highlight); margin-top: var(--space-4); }
+    .timer-count { font-size: var(--text-lg); font-weight: 800; font-variant-numeric: tabular-nums; }
+    .budget-item { display: grid; gap: 8px; }
+    .shop-line { display: flex; justify-content: space-between; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .check-list .check-item { display: flex; justify-content: space-between; align-items: center; }
+    .achievement-row { grid-template-columns: repeat(4, 1fr); margin-top: var(--space-4); }
+    .badge { padding: var(--space-4); text-align: center; border-radius: var(--radius-lg); background: var(--color-surface-2); }
+    .badge .emoji { width: 52px; height: 52px; margin: 0 auto 10px; border-radius: 18px; display: grid; place-items: center; font-size: 24px; background: rgba(223,184,90,.14); }
+    .coach-panel { display: grid; gap: var(--space-5); align-content: start; }
+    .coach-card { padding: var(--space-5); border-radius: var(--radius-xl); background: color-mix(in srgb, var(--color-surface) 96%, transparent); border: 1px solid rgba(255,255,255,.06); }
+    .toggle-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .toggle-chip { padding: 10px 12px; border-radius: var(--radius-full); background: var(--color-surface-2); color: var(--color-text-muted); font-size: var(--text-sm); }
+    .toggle-chip.active { background: var(--color-primary-highlight); color: var(--color-text); }
+    .color-picks { display: flex; gap: 10px; margin-top: 12px; }
+    .swatch { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255,255,255,.15); }
+    .progress-bar { height: 12px; background: var(--color-surface-offset); border-radius: 999px; overflow: hidden; margin-top: 12px; }
+    .progress-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--color-primary), var(--color-blue)); }
+    .footer-note { color: var(--color-text-faint); font-size: var(--text-xs); }
+    .mobile-tabs { display: none; }
+    @media (max-width: 1220px) {
+      .app-shell { grid-template-columns: 250px 1fr; }
+      .coach-panel { display: none; }
+      .hero-grid, .plan-grid { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 760px) {
+      body { overflow: auto; }
+      .app-shell { display: block; height: auto; }
+      .sidebar { display: none; }
+      .main { padding: var(--space-4); }
+      .kpi-grid, .goal-row, .exercise-grid, .achievement-row { grid-template-columns: 1fr; }
+      .topbar { flex-direction: column; align-items: start; }
+      .mobile-tabs {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; position: sticky; bottom: 0; margin-top: var(--space-6);
+        background: rgba(17,19,18,.92); backdrop-filter: blur(18px); padding: 10px; border-radius: 20px; border: 1px solid rgba(255,255,255,.06);
+      }
+      .mobile-tabs a { text-align: center; padding: 10px 6px; border-radius: 14px; font-size: var(--text-xs); color: var(--color-text-muted); }
+      .mobile-tabs a.active { background: var(--color-primary-highlight); color: var(--color-text); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-label="FitFlow Pro logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" aria-hidden="true">
+            <path d="M5 16c3.8-1.3 6.3-4.2 7.5-8.7 1 3.1 3.2 5.7 6.5 7.8" />
+            <path d="M7.5 11.5h9" />
+            <circle cx="18.5" cy="8" r="1.5" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div class="brand-copy">
+          <h1>FitFlow Pro</h1>
+          <p>Phone + watch wellness OS</p>
+        </div>
+        <button class="theme-toggle" data-theme-toggle aria-label="Switch theme">☼</button>
+      </div>
+
+      <nav class="nav-group" aria-label="Primary">
+        <div class="nav-label">Core</div>
+        <a class="nav-item active" href="#dashboard"><span class="nav-icon">◔</span>Dashboard</a>
+        <a class="nav-item" href="#nutrition"><span class="nav-icon">◒</span>Food + Drink Log</a>
+        <a class="nav-item" href="#training"><span class="nav-icon">◐</span>Training Plans</a>
+        <a class="nav-item" href="#budget"><span class="nav-icon">◓</span>Smart Budget</a>
+        <a class="nav-item" href="#checkin"><span class="nav-icon">◎</span>Gym Check-In</a>
+      </nav>
+
+      <div class="nav-group">
+        <div class="nav-label">Motivation</div>
+        <a class="nav-item" href="#achievements"><span class="nav-icon">✦</span>Achievements</a>
+        <a class="nav-item" href="#streaks"><span class="nav-icon">↯</span>Streaks</a>
+        <a class="nav-item" href="#coach"><span class="nav-icon">☰</span>AI + Human Coach</a>
+      </div>
+
+      <div class="mini-watch">
+        <div class="watch-face">
+          <div>
+            <div class="subtle" style="font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.12em;">Watch companion</div>
+            <strong style="font-size:var(--text-lg);">Fuel ring</strong>
+          </div>
+          <div class="watch-ring"></div>
+          <div class="watch-stats">
+            <span>1,840 kcal</span>
+            <span>82 oz</span>
+            <span>7,411 steps</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="page-title">
+          <h2>One app for food, fitness, recovery, and spending.</h2>
+          <p>This prototype combines calorie and hydration tracking, adaptive meal ideas, shopper-aware grocery budgeting, guided workouts with form videos, a rest timer, gym check-ins, and coach-managed plans in one clean flow.</p>
+        </div>
+        <div class="top-actions">
+          <button class="btn">Preview smartwatch</button>
+          <button class="btn btn-primary">Start onboarding</button>
+        </div>
+      </header>
+
+      <section class="hero-grid section">
+        <article class="card hero-card">
+          <div class="eyebrow">Adaptive wellness engine</div>
+          <h3>Plans change with your body, goals, and budget.</h3>
+          <p>Users choose fat loss, muscle gain, endurance, recovery, strength, or general health. The app then adjusts meals, shopping lists, training load, hydration targets, and recovery prompts using health inputs, wearable data, and coach edits.</p>
+          <div class="goal-row">
+            <div class="goal-pill"><span>Primary goal</span><strong>Lean muscle</strong></div>
+            <div class="goal-pill"><span>Budget target</span><strong>$118/week</strong></div>
+            <div class="goal-pill"><span>Recovery score</span><strong>86%</strong></div>
+          </div>
+        </article>
+        <aside class="card split-card">
+          <div>
+            <div class="subtle">Today at a glance</div>
+            <strong style="font-size:var(--text-xl); display:block; margin-top:6px;">92% plan match</strong>
+          </div>
+          <div class="meal-item">
+            <header><div><strong>Auto log</strong><span>Photo, barcode, voice, quick add</span></div><strong>4 taps max</strong></header>
+            <div class="tag-row"><span class="tag">Macro targets</span><span class="tag">Hydration alerts</span><span class="tag">Watch shortcuts</span></div>
+          </div>
+          <div class="meal-item">
+            <header><div><strong>Coach layer</strong><span>AI builds a draft, trainer fine-tunes</span></div><strong>Dual mode</strong></header>
+            <div class="tag-row"><span class="tag">Medical notes</span><span class="tag">Preferences</span><span class="tag">Injury-safe</span></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="kpi-grid section">
+        <article class="card metric"><span>Calories remaining</span><strong>420</strong><span>Balanced across protein-heavy dinner</span></article>
+        <article class="card metric"><span>Protein target</span><strong>146g</strong><span>18g left after lunch and shake</span></article>
+        <article class="card metric"><span>Workout streak</span><strong>12 days</strong><span>Next unlock at 14 completed sessions</span></article>
+        <article class="card metric"><span>Weekly savings</span><strong>$22.40</strong><span>By routing groceries across 3 stores</span></article>
+      </section>
+
+      <section class="plan-grid section" id="nutrition">
+        <article class="card meal-plan">
+          <div class="section-head">
+            <div>
+              <h3>Meal planning and logging</h3>
+              <p>Food, drinks, supplements, caffeine, alcohol, and water live in one daily timeline.</p>
+            </div>
+            <button class="btn">Edit allergies</button>
+          </div>
+          <div class="meal-list">
+            <div class="meal-item">
+              <header><div><strong>Breakfast</strong><span>Greek yogurt bowl with berries and oats</span></div><strong>34g protein</strong></header>
+              <div class="tag-row"><span class="tag">High satiety</span><span class="tag">Low prep</span><span class="tag">Gut friendly</span></div>
+            </div>
+            <div class="meal-item">
+              <header><div><strong>Lunch</strong><span>Chicken rice bowl with avocado and greens</span></div><strong>46g protein</strong></header>
+              <div class="tag-row"><span class="tag">Meal prep batch</span><span class="tag">Post-workout</span><span class="tag">Budget smart</span></div>
+            </div>
+            <div class="meal-item">
+              <header><div><strong>Dinner idea</strong><span>Salmon, roasted potatoes, asparagus</span></div><strong>Omega-rich</strong></header>
+              <div class="tag-row"><span class="tag">Heart health</span><span class="tag">Recovery support</span><span class="tag">Micronutrient dense</span></div>
+            </div>
+          </div>
+        </article>
+
+        <aside class="card training-plan">
+          <div class="section-head">
+            <div>
+              <h3>Health-aware recommendations</h3>
+              <p>Plans adapt to diabetes, hypertension, allergies, mobility limits, pregnancy, recovery, and personal eating styles.</p>
+            </div>
+          </div>
+          <div class="check-list">
+            <div class="check-item"><span>Diet preference</span><strong>Mediterranean</strong></div>
+            <div class="check-item"><span>Restrictions</span><strong>Shellfish-free</strong></div>
+            <div class="check-item"><span>Hydration target</span><strong>96 oz</strong></div>
+            <div class="check-item"><span>Auto-generated grocery list</span><strong>Ready</strong></div>
+          </div>
+          <div class="progress-bar"><span style="width:78%"></span></div>
+        </aside>
+      </section>
+
+      <section class="plan-grid section" id="training">
+        <article class="card training-plan">
+          <div class="section-head">
+            <div>
+              <h3>Personal training builder</h3>
+              <p>Each exercise card explains form, equipment, purpose, muscles worked, reps, time, and rest pacing.</p>
+            </div>
+            <button class="btn btn-primary">Assign today’s workout</button>
+          </div>
+          <div class="exercise-grid">
+            <div class="exercise-item">
+              <div class="exercise-top"><div><strong>Leg press</strong><span>Machine • Quads, glutes, hamstrings</span></div><strong>4 x 10</strong></div>
+              <p class="subtle">Why it matters: builds lower-body strength with more back support than many free-weight options.</p>
+              <div class="video-box"><div><strong>Video panel</strong><div class="subtle">Tap to watch setup, foot position, range of motion, and safety cues.</div></div></div>
+            </div>
+            <div class="exercise-item">
+              <div class="exercise-top"><div><strong>Lat pulldown</strong><span>Cable machine • Lats, biceps, upper back</span></div><strong>3 x 12</strong></div>
+              <p class="subtle">Why it matters: improves pulling strength and posture while teaching shoulder control.</p>
+              <div class="video-box"><div><strong>Video panel</strong><div class="subtle">Shows grip width, chest position, elbow path, and common mistakes.</div></div></div>
+            </div>
+          </div>
+          <div class="pause-timer">
+            <div><strong>Pause timer</strong><div class="subtle">Rest between sets and exercises without leaving the screen.</div></div>
+            <div class="timer-count" id="timerCount">00:45</div>
+            <button class="btn" id="timerToggle">Pause</button>
+          </div>
+        </article>
+
+        <aside class="card budget-card" id="budget">
+          <div class="section-head">
+            <div>
+              <h3>Smart grocery budget</h3>
+              <p>The app compares store pricing, travel tradeoffs, and coupon timing to lower the meal-plan cost.</p>
+            </div>
+          </div>
+          <div class="budget-list">
+            <div class="budget-item">
+              <header><div><strong>Chicken breast pack</strong><span>Best option today</span></div><strong>$11.49</strong></header>
+              <div class="shop-line"><span>Aldi</span><span>Save $2.10 vs average</span></div>
+            </div>
+            <div class="budget-item">
+              <header><div><strong>Greek yogurt tub</strong><span>Best unit cost</span></div><strong>$4.79</strong></header>
+              <div class="shop-line"><span>Walmart</span><span>Save $1.30</span></div>
+            </div>
+            <div class="budget-item">
+              <header><div><strong>Salmon fillets</strong><span>Deal window ends tonight</span></div><strong>$9.99</strong></header>
+              <div class="shop-line"><span>Kroger</span><span>Use digital coupon</span></div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="plan-grid section" id="checkin">
+        <article class="card checkin-card">
+          <div class="section-head">
+            <div>
+              <h3>Gym check-in and location layer</h3>
+              <p>Members can check in by QR, NFC, or geofence to earn points, confirm attendance, and trigger that day’s gym-specific routine.</p>
+            </div>
+            <button class="btn">View nearby gyms</button>
+          </div>
+          <div class="check-list">
+            <div class="check-item"><span>Planet Fitness - Tri County</span><strong>1.2 miles</strong></div>
+            <div class="check-item"><span>LA Fitness - Springdale</span><strong>QR ready</strong></div>
+            <div class="check-item"><span>YMCA - Blue Ash</span><strong>Class slot at 6:30 PM</strong></div>
+          </div>
+        </article>
+        <aside class="card achievements-card" id="achievements">
+          <div class="section-head">
+            <div>
+              <h3>Goals, streaks, badges, unlockables</h3>
+              <p>Motivation is built into the product loop so progress feels visible every day.</p>
+            </div>
+          </div>
+          <div class="achievement-row">
+            <div class="badge"><div class="emoji">🔥</div><strong>12-day streak</strong><span>Miss one day grace rule</span></div>
+            <div class="badge"><div class="emoji">🥗</div><strong>Meal prep badge</strong><span>7 lunches logged</span></div>
+            <div class="badge"><div class="emoji">🏋️</div><strong>Strength tier II</strong><span>Unlocked new split</span></div>
+            <div class="badge"><div class="emoji">💎</div><strong>Budget saver</strong><span>Saved $80 this month</span></div>
+          </div>
+        </aside>
+      </section>
+
+      <div class="mobile-tabs">
+        <a href="#dashboard" class="active">Home</a>
+        <a href="#nutrition">Food</a>
+        <a href="#training">Train</a>
+        <a href="#coach">Coach</a>
+      </div>
+    </main>
+
+    <aside class="coach-panel" id="coach">
+      <div class="coach-card">
+        <div class="subtle">Plan control</div>
+        <strong style="margin-top:6px; display:block;">AI coach + human trainer</strong>
+        <p class="subtle" style="margin-top:10px;">AI drafts the plan from goals, health data, budget, equipment, and schedule. A human trainer can override exercises, meal plans, and coaching notes at any time.</p>
+      </div>
+      <div class="coach-card">
+        <div class="subtle">Who can edit</div>
+        <div class="toggle-row" style="margin-top:12px;">
+          <div class="toggle-chip active">AI active</div>
+          <div class="toggle-chip active">Trainer active</div>
+          <div class="toggle-chip">Dietitian invited</div>
+        </div>
+      </div>
+      <div class="coach-card">
+        <div class="subtle">Personalization</div>
+        <strong style="margin:8px 0 4px; display:block;">Theme color picker</strong>
+        <div class="color-picks">
+          <div class="swatch" data-color="#4fb7aa" style="background:#4fb7aa"></div>
+          <div class="swatch" data-color="#78aee3" style="background:#78aee3"></div>
+          <div class="swatch" data-color="#dfb85a" style="background:#dfb85a"></div>
+          <div class="swatch" data-color="#b287f0" style="background:#b287f0"></div>
+        </div>
+      </div>
+      <div class="coach-card">
+        <div class="subtle">Onboarding inputs</div>
+        <div class="check-list" style="margin-top:12px;">
+          <div class="check-item"><span>Wearable sync</span><strong>Apple / Garmin / Wear OS</strong></div>
+          <div class="check-item"><span>Equipment profile</span><strong>Gym + home dumbbells</strong></div>
+          <div class="check-item"><span>Available time</span><strong>45 mins on weekdays</strong></div>
+          <div class="check-item"><span>Coach communication</span><strong>Chat + video review</strong></div>
+        </div>
+      </div>
+      <p class="footer-note">Prototype note: this is a front-end concept showing structure, flow, styling, and interaction patterns for a full phone and smartwatch product.</p>
+    </aside>
+  </div>
+
+  <script>
+    const root = document.documentElement;
+    const themeToggle = document.querySelector('[data-theme-toggle]');
+    let dark = true;
+    themeToggle?.addEventListener('click', () => {
+      dark = !dark;
+      root.setAttribute('data-theme', dark ? 'dark' : 'light');
+      themeToggle.textContent = dark ? '☼' : '☾';
+    });
+
+    document.querySelectorAll('.swatch').forEach((swatch) => {
+      swatch.addEventListener('click', () => {
+        const color = swatch.dataset.color;
+        root.style.setProperty('--color-primary', color);
+        root.style.setProperty('--color-primary-highlight', `${color}22`);
+      });
+    });
+
+    let running = true;
+    let remaining = 45;
+    const timerCount = document.getElementById('timerCount');
+    const timerToggle = document.getElementById('timerToggle');
+    const renderTimer = () => {
+      const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+      const secs = String(remaining % 60).padStart(2, '0');
+      timerCount.textContent = `${mins}:${secs}`;
+    };
+    renderTimer();
+    setInterval(() => {
+      if (!running) return;
+      remaining = remaining <= 0 ? 45 : remaining - 1;
+      renderTimer();
+    }, 1000);
+    timerToggle?.addEventListener('click', () => {
+      running = !running;
+      timerToggle.textContent = running ? 'Pause' : 'Resume';
+    });
+  </script>
+</body>
+</html>

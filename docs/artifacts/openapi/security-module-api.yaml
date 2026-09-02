@@ -1,0 +1,554 @@
+openapi: 3.0.3
+info:
+  title: FitFlow Suite API
+  description: >
+    Authentication, RBAC-protected, and workout-session endpoints for the
+    FitFlow Suite fitness platform. Covers the routes implemented in
+    after/auth.routes.ts, after/user.routes.ts, and rbac/example.routes.ts.
+  version: "1.0.0"
+  contact:
+    name: FitFlow Suite Engineering
+servers:
+  - url: https://api.fitflowsuite.com/v1
+    description: Production
+  - url: https://staging-api.fitflowsuite.com/v1
+    description: Staging
+
+tags:
+  - name: Auth
+    description: Registration, login, token refresh, and logout.
+  - name: Workout Sessions
+    description: Self-service workout session logging, scoped to the caller.
+  - name: Admin
+    description: Admin-only account and catalog management.
+  - name: Coach
+    description: Coach-facing training plan and client note endpoints.
+  - name: Gyms
+    description: Gym partner check-in verification.
+  - name: Users
+    description: User profile access.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Create a new account
+      description: >
+        Creates a user with the default USER role and returns an access
+        token + refresh token pair. Rate limited to 5 requests/hour per IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          description: An account with this email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in with email and password
+      description: >
+        Returns an access token + refresh token pair. Rate limited to 10
+        attempts per 15 minutes per (IP, email) pair. Invalid email and
+        invalid password both return the same generic 401 to avoid
+        leaking which part of the credential was wrong.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate a refresh token for a new access/refresh pair
+      description: >
+        Exchanges a valid, unused refresh token for a new access token and
+        a NEW refresh token. The presented refresh token is revoked as
+        part of this call (rotation) — it cannot be used again. Reusing an
+        already-rotated token revokes every refresh token for that user
+        and returns 401. Rate limited to 30 requests per 15 minutes per IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: New token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          description: >
+            Invalid, expired, or already-used refresh token. If reuse of
+            an already-rotated token is detected, every refresh token for
+            the account is revoked and the client must log in again.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke a refresh token
+      description: >
+        Revokes the presented refresh token. If `allSessions` is true,
+        revokes every active refresh token for the account ("log out
+        everywhere"). Idempotent — an unknown or already-revoked token
+        still returns 204.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogoutRequest"
+      responses:
+        "204":
+          description: Logged out
+
+  /workout-sessions:
+    get:
+      tags: [Workout Sessions]
+      summary: List the authenticated user's workout sessions
+      description: Always scoped to the caller — never returns another user's sessions.
+      responses:
+        "200":
+          description: List of workout sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkoutSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workout-sessions/{id}:
+    parameters:
+      - $ref: "#/components/parameters/WorkoutSessionId"
+    get:
+      tags: [Workout Sessions]
+      summary: Get a single workout session
+      description: Returns 404 if the session doesn't exist OR belongs to a different user.
+      responses:
+        "200":
+          description: The workout session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkoutSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Workout Sessions]
+      summary: Update a workout session's status
+      description: >
+        `userId` is never accepted in the body — ownership can't be
+        reassigned by the client. Returns 404 if the session doesn't exist
+        or isn't owned by the caller.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWorkoutSessionRequest"
+      responses:
+        "200":
+          description: Updated workout session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkoutSession"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/users/{id}:
+    delete:
+      tags: [Admin]
+      summary: Delete a user account
+      x-required-roles: [ADMIN]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Account deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/exercises:
+    post:
+      tags: [Admin]
+      summary: Add an exercise to the global catalog
+      x-required-roles: [ADMIN]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "201":
+          description: Exercise created
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /coach/training-plans:
+    post:
+      tags: [Coach]
+      summary: Author a training plan
+      x-required-roles: [COACH, ADMIN]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "201":
+          description: Training plan created
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /coach/clients/{clientId}/notes:
+    post:
+      tags: [Coach]
+      summary: Add a coaching note for a specific client
+      description: >
+        Requires COACH or ADMIN, AND (for coaches) an active CoachClient
+        relationship with the target client — verified against the
+        database, not just role membership. Admins bypass the
+        relationship check.
+      x-required-roles: [COACH, ADMIN]
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "201":
+          description: Note created
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: >
+            Missing role, or a COACH without an active relationship to
+            this client.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /coach/analytics/advanced:
+    get:
+      tags: [Coach]
+      summary: Advanced coaching analytics (premium feature)
+      description: Requires the caller to hold BOTH the COACH and SUBSCRIBER roles.
+      x-required-roles: [COACH, SUBSCRIBER]
+      responses:
+        "200":
+          description: Analytics payload
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /users/{userId}/profile:
+    get:
+      tags: [Users]
+      summary: Get a user's profile
+      description: A user may fetch their own profile; ADMIN may fetch anyone's.
+      x-required-roles: [ADMIN]
+      x-self-access: true
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Profile payload
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /gyms/{gymId}/checkins/{checkinId}/verify:
+    post:
+      tags: [Gyms]
+      summary: Verify a gym check-in
+      x-required-roles: [GYM_PARTNER, ADMIN]
+      parameters:
+        - name: gymId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: checkinId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Check-in verified
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Short-lived (15 min default) access token issued by /auth/login,
+        /auth/register, or /auth/refresh. Roles are re-verified against
+        the database on every request, not trusted solely from the token.
+
+  parameters:
+    WorkoutSessionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: Missing, malformed, or invalid/expired bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Authenticated, but missing a required role
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource does not exist, or is not owned by the caller
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ValidationError:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        RateLimit-Limit:
+          schema:
+            type: integer
+        RateLimit-Remaining:
+          schema:
+            type: integer
+        RateLimit-Reset:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: FORBIDDEN
+            message:
+              type: string
+              example: "This action requires one of the following roles: ADMIN"
+            details:
+              type: object
+              additionalProperties: true
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    LogoutRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+        allSessions:
+          type: boolean
+          default: false
+          description: If true, revoke every active refresh token for the account.
+
+    TokenPair:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        accessTokenExpiresIn:
+          type: integer
+          description: Seconds until the access token expires.
+          example: 900
+        refreshTokenExpiresAt:
+          type: string
+          format: date-time
+
+    AuthSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/TokenPair"
+        - type: object
+          properties:
+            user:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                email:
+                  type: string
+                  format: email
+
+    UpdateWorkoutSessionRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [in_progress, completed, cancelled]
+
+    WorkoutSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [in_progress, completed, cancelled]
