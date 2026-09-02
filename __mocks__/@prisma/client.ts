@@ -44,7 +44,10 @@ export interface PrismaMockClient {
   };
   exercise: {
     findFirst: jest.Mock;
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
     create: jest.Mock;
+    count: jest.Mock;
   };
   streak: {
     upsert: jest.Mock;
@@ -124,7 +127,10 @@ export const prismaMock: PrismaMockClient = {
   },
   exercise: {
     findFirst: jest.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
     create: jest.fn(),
+    count: jest.fn(),
   },
   streak: {
     upsert: jest.fn(),

@@ -40,6 +40,8 @@ tags:
     description: Coach <-> client relationship management.
   - name: gyms
     description: Gym catalog and check-ins.
+  - name: exercises
+    description: Exercise catalog.
   - name: admin
     description: Admin-only account management.
 
@@ -836,6 +838,92 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /v1/exercises:
+    get:
+      tags: [exercises]
+      summary: Browse the exercise catalog
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Case-insensitive substring match on name.
+        - name: category
+          in: query
+          schema: { $ref: "#/components/schemas/ExerciseCategory" }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated exercise list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exercises:
+                    type: array
+                    items: { $ref: "#/components/schemas/Exercise" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [exercises]
+      summary: Add an exercise to the catalog (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, category]
+              properties:
+                name: { type: string }
+                category: { $ref: "#/components/schemas/ExerciseCategory" }
+                equipment: { type: string }
+                whyItWorks: { type: string }
+                howToVideoUrl: { type: string, format: uri }
+                primaryMuscles: { type: array, items: { type: string } }
+                secondaryMuscles: { type: array, items: { type: string } }
+                instructions: { type: array, items: { type: string }, description: In order. }
+      responses:
+        "201":
+          description: Created exercise.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exercise: { $ref: "#/components/schemas/Exercise" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/exercises/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [exercises]
+      summary: Get an exercise with its muscles and step-by-step instructions
+      responses:
+        "200":
+          description: The exercise.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exercise: { $ref: "#/components/schemas/Exercise" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/admin/users/{id}:
     parameters:
       - name: id
@@ -939,6 +1027,34 @@ components:
     MealType:
       type: string
       enum: [breakfast, lunch, dinner, snack, drink]
+
+    ExerciseCategory:
+      type: string
+      enum: [strength, cardio, mobility, recovery, sport]
+
+    Exercise:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        category: { $ref: "#/components/schemas/ExerciseCategory" }
+        equipment: { type: string, nullable: true }
+        whyItWorks: { type: string, nullable: true }
+        howToVideoUrl: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        primaryMuscles:
+          type: array
+          items: { type: object, properties: { muscleName: { type: string } } }
+        secondaryMuscles:
+          type: array
+          items: { type: object, properties: { muscleName: { type: string } } }
+        instructions:
+          type: array
+          items:
+            type: object
+            properties:
+              stepNumber: { type: integer }
+              instructionText: { type: string }
 
     Gym:
       type: object
