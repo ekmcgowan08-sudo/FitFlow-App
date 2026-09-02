@@ -57,11 +57,15 @@ async function main() {
     create: { coachUserId: coach.id, clientUserId: member.id },
   });
 
-  const squat = await prisma.exercise.upsert({
-    where: { id: 'seed-exercise-back-squat' },
-    update: {},
-    create: { id: 'seed-exercise-back-squat', name: 'Back Squat', category: ExerciseCategory.strength },
-  });
+  // Matched by name rather than a hardcoded id: every other exercise in
+  // the catalog gets a real generated UUID (@default(uuid()) in
+  // prisma/schema.prisma), and several routes validate incoming exercise
+  // ids as UUIDs (e.g. workout-plan.schema.ts) — a hardcoded readable id
+  // here would be the one exercise in the whole catalog that couldn't be
+  // referenced from those routes.
+  const squat =
+    (await prisma.exercise.findFirst({ where: { name: 'Back Squat', category: ExerciseCategory.strength } })) ??
+    (await prisma.exercise.create({ data: { name: 'Back Squat', category: ExerciseCategory.strength } }));
 
   await prisma.workoutSession.create({
     data: {

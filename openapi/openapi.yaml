@@ -42,6 +42,8 @@ tags:
     description: Gym catalog and check-ins.
   - name: exercises
     description: Exercise catalog.
+  - name: workout-plans
+    description: Coach/AI-authored training templates.
   - name: admin
     description: Admin-only account management.
 
@@ -924,6 +926,136 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/workout-plans:
+    get:
+      tags: [workout-plans]
+      summary: List workout plans (own, or another member's via userId if ADMIN/COACH)
+      parameters:
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated plan list (summary only — no nested sessions).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items: { $ref: "#/components/schemas/WorkoutPlanSummary" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [workout-plans]
+      summary: Create a workout plan with nested sessions and exercises (own, or another member's via userId if ADMIN/COACH)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, title]
+              properties:
+                userId: { type: string, format: uuid }
+                title: { type: string }
+                coachSource: { type: string, enum: [ai, human], default: ai }
+                sessions:
+                  type: array
+                  items:
+                    type: object
+                    required: [dayOfWeek, focus]
+                    properties:
+                      dayOfWeek: { type: string }
+                      focus: { type: string }
+                      estimatedMinutes: { type: integer }
+                      restTimerSeconds: { type: integer }
+                      exercises:
+                        type: array
+                        items:
+                          type: object
+                          required: [exerciseId]
+                          properties:
+                            exerciseId: { type: string, format: uuid }
+                            targetSets: { type: integer }
+                            targetReps: { type: string }
+                            targetWorkSeconds: { type: integer }
+                            noteText: { type: string }
+                            sortOrder: { type: integer, default: 1 }
+      responses:
+        "201":
+          description: Created plan with its sessions and exercises.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan: { $ref: "#/components/schemas/WorkoutPlan" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/workout-plans/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [workout-plans]
+      summary: Get a plan with its sessions and exercises (self, or ADMIN/COACH)
+      responses:
+        "200":
+          description: The plan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan: { $ref: "#/components/schemas/WorkoutPlan" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [workout-plans]
+      summary: Rename a plan (self, or ADMIN/COACH)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+      responses:
+        "200":
+          description: Updated plan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan: { $ref: "#/components/schemas/WorkoutPlanSummary" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [workout-plans]
+      summary: Delete a plan, cascading to its sessions and their exercises (self, or ADMIN/COACH)
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/admin/users/{id}:
     parameters:
       - name: id
@@ -1027,6 +1159,48 @@ components:
     MealType:
       type: string
       enum: [breakfast, lunch, dinner, snack, drink]
+
+    WorkoutPlanSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        title: { type: string }
+        coachSource: { type: string, enum: [ai, human] }
+        createdAt: { type: string, format: date-time }
+
+    WorkoutPlanSessionExercise:
+      type: object
+      properties:
+        id: { type: string }
+        exerciseId: { type: string, format: uuid }
+        targetSets: { type: integer, nullable: true }
+        targetReps: { type: string, nullable: true }
+        targetWorkSeconds: { type: integer, nullable: true }
+        noteText: { type: string, nullable: true }
+        sortOrder: { type: integer }
+        exercise: { $ref: "#/components/schemas/Exercise" }
+
+    WorkoutPlanSession:
+      type: object
+      properties:
+        id: { type: string }
+        dayOfWeek: { type: string }
+        focus: { type: string }
+        estimatedMinutes: { type: integer, nullable: true }
+        restTimerSeconds: { type: integer, nullable: true }
+        exercises:
+          type: array
+          items: { $ref: "#/components/schemas/WorkoutPlanSessionExercise" }
+
+    WorkoutPlan:
+      allOf:
+        - $ref: "#/components/schemas/WorkoutPlanSummary"
+        - type: object
+          properties:
+            sessions:
+              type: array
+              items: { $ref: "#/components/schemas/WorkoutPlanSession" }
 
     ExerciseCategory:
       type: string
