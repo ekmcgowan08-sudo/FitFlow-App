@@ -34,6 +34,8 @@ tags:
     description: Member health/fitness goal CRUD.
   - name: streaks
     description: Read-only streak counters, advanced as a side effect of other actions.
+  - name: nutrition-logs
+    description: Food/drink log CRUD.
   - name: admin
     description: Admin-only account management.
 
@@ -489,6 +491,124 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /v1/nutrition-logs:
+    get:
+      tags: [nutrition-logs]
+      summary: List nutrition logs (own, or another member's via userId if ADMIN/COACH)
+      parameters:
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: mealType
+          in: query
+          schema: { $ref: "#/components/schemas/MealType" }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated nutrition log list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items: { $ref: "#/components/schemas/NutritionLog" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [nutrition-logs]
+      summary: Log a food/drink entry (own, or another member's via userId if ADMIN/COACH)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, loggedAt, mealType, itemName]
+              properties:
+                userId: { type: string, format: uuid }
+                loggedAt: { type: string, format: date-time }
+                mealType: { $ref: "#/components/schemas/MealType" }
+                itemName: { type: string }
+                servingDescription: { type: string }
+                calories: { type: integer }
+                proteinGrams: { type: number }
+                carbsGrams: { type: number }
+                fatGrams: { type: number }
+                waterOz: { type: number }
+      responses:
+        "201":
+          description: Created log entry.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  log: { $ref: "#/components/schemas/NutritionLog" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/nutrition-logs/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [nutrition-logs]
+      summary: Update a nutrition log entry (self, or ADMIN/COACH)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                loggedAt: { type: string, format: date-time }
+                mealType: { $ref: "#/components/schemas/MealType" }
+                itemName: { type: string }
+                servingDescription: { type: string }
+                calories: { type: integer }
+                proteinGrams: { type: number }
+                carbsGrams: { type: number }
+                fatGrams: { type: number }
+                waterOz: { type: number }
+      responses:
+        "200":
+          description: Updated log entry.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  log: { $ref: "#/components/schemas/NutritionLog" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [nutrition-logs]
+      summary: Delete a nutrition log entry (self, or ADMIN/COACH)
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/admin/users/{id}:
     parameters:
       - name: id
@@ -588,6 +708,25 @@ components:
         streakType: { type: string, example: workout }
         currentCount: { type: integer }
         bestCount: { type: integer }
+
+    MealType:
+      type: string
+      enum: [breakfast, lunch, dinner, snack, drink]
+
+    NutritionLog:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        loggedAt: { type: string, format: date-time }
+        mealType: { $ref: "#/components/schemas/MealType" }
+        itemName: { type: string }
+        servingDescription: { type: string, nullable: true }
+        calories: { type: integer, nullable: true }
+        proteinGrams: { type: number, nullable: true }
+        carbsGrams: { type: number, nullable: true }
+        fatGrams: { type: number, nullable: true }
+        waterOz: { type: number, nullable: true }
 
     TokenPair:
       type: object
