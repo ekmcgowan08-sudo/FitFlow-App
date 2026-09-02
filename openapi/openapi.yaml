@@ -44,6 +44,10 @@ tags:
     description: Exercise catalog.
   - name: workout-plans
     description: Coach/AI-authored training templates.
+  - name: meal-plans
+    description: Coach/AI-authored weekly meal plans.
+  - name: grocery-plans
+    description: Shopping lists with per-item pricing.
   - name: admin
     description: Admin-only account management.
 
@@ -1056,6 +1060,198 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/meal-plans:
+    get:
+      tags: [meal-plans]
+      summary: List meal plans (own, or another member's via userId if ADMIN/COACH)
+      parameters:
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated plan list (summary only — no nested meals).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items: { $ref: "#/components/schemas/MealPlanSummary" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [meal-plans]
+      summary: Create a meal plan with nested meals (own, or another member's via userId if ADMIN/COACH)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, title]
+              properties:
+                userId: { type: string, format: uuid }
+                title: { type: string }
+                dailyCalories: { type: integer }
+                coachSource: { type: string, enum: [ai, human], default: ai }
+                meals:
+                  type: array
+                  items:
+                    type: object
+                    required: [dayOfWeek, mealType, recipeName]
+                    properties:
+                      dayOfWeek: { type: string }
+                      mealType: { $ref: "#/components/schemas/MealType" }
+                      recipeName: { type: string }
+                      calories: { type: integer }
+                      estimatedCostUsd: { type: number }
+      responses:
+        "201":
+          description: Created plan with its meals.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan: { $ref: "#/components/schemas/MealPlan" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/meal-plans/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [meal-plans]
+      summary: Get a plan with its meals (self, or ADMIN/COACH)
+      responses:
+        "200":
+          description: The plan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan: { $ref: "#/components/schemas/MealPlan" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [meal-plans]
+      summary: Delete a plan, cascading to its meals (self, or ADMIN/COACH)
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/grocery-plans:
+    get:
+      tags: [grocery-plans]
+      summary: List grocery plans (own, or another member's via userId if ADMIN/COACH)
+      parameters:
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated plan list (summary only — no nested items).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items: { $ref: "#/components/schemas/GroceryPlanSummary" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [grocery-plans]
+      summary: Create a grocery plan with nested items (own, or another member's via userId if ADMIN/COACH)
+      description: totalEstimatedCostUsd is computed server-side as the sum of each item's unitPriceUsd.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [storeName, itemName]
+                    properties:
+                      storeName: { type: string }
+                      itemName: { type: string }
+                      quantity: { type: string }
+                      unitPriceUsd: { type: number }
+                      bestDeal: { type: boolean, default: false }
+      responses:
+        "201":
+          description: Created plan with its items.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan: { $ref: "#/components/schemas/GroceryPlan" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/grocery-plans/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [grocery-plans]
+      summary: Get a plan with its items (self, or ADMIN/COACH)
+      responses:
+        "200":
+          description: The plan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan: { $ref: "#/components/schemas/GroceryPlan" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [grocery-plans]
+      summary: Delete a plan, cascading to its items (self, or ADMIN/COACH)
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/admin/users/{id}:
     parameters:
       - name: id
@@ -1201,6 +1397,58 @@ components:
             sessions:
               type: array
               items: { $ref: "#/components/schemas/WorkoutPlanSession" }
+
+    MealPlanSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        title: { type: string }
+        dailyCalories: { type: integer, nullable: true }
+        coachSource: { type: string, enum: [ai, human] }
+        createdAt: { type: string, format: date-time }
+
+    MealPlan:
+      allOf:
+        - $ref: "#/components/schemas/MealPlanSummary"
+        - type: object
+          properties:
+            meals:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  dayOfWeek: { type: string }
+                  mealType: { $ref: "#/components/schemas/MealType" }
+                  recipeName: { type: string }
+                  calories: { type: integer, nullable: true }
+                  estimatedCostUsd: { type: number, nullable: true }
+
+    GroceryPlanSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        totalEstimatedCostUsd: { type: number, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    GroceryPlan:
+      allOf:
+        - $ref: "#/components/schemas/GroceryPlanSummary"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  storeName: { type: string }
+                  itemName: { type: string }
+                  quantity: { type: string, nullable: true }
+                  unitPriceUsd: { type: number, nullable: true }
+                  bestDeal: { type: boolean }
 
     ExerciseCategory:
       type: string

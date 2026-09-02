@@ -16,6 +16,8 @@ import coachAssignmentRoutes from './routes/coach-assignment.routes';
 import gymRoutes from './routes/gym.routes';
 import exerciseRoutes from './routes/exercise.routes';
 import workoutPlanRoutes from './routes/workout-plan.routes';
+import mealPlanRoutes from './routes/meal-plan.routes';
+import groceryPlanRoutes from './routes/grocery-plan.routes';
 import rbacExampleRoutes from './routes/rbac-examples.routes';
 import { errorHandler } from './lib/errors';
 
@@ -53,6 +55,8 @@ export function createApp(): Express {
   protectedRoutes.use(gymRoutes);
   protectedRoutes.use(exerciseRoutes);
   protectedRoutes.use(workoutPlanRoutes);
+  protectedRoutes.use(mealPlanRoutes);
+  protectedRoutes.use(groceryPlanRoutes);
   protectedRoutes.use(rbacExampleRoutes);
   app.use('/v1', protectedRoutes);
 
