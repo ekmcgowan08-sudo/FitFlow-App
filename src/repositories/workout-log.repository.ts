@@ -87,6 +87,16 @@ export class WorkoutLogRepository extends BaseRepository<
    * rather than a bare session row. Finds-or-creates a catalog `Exercise`
    * by (name, category) so free-text logging still resolves to the shared
    * exercise catalog used by workout plans.
+   *
+   * Two fixes caught by live-testing this against a real database:
+   * - It used to create exactly ONE WorkoutSet row no matter what `sets`
+   *   said, so "3 sets of squats" was indistinguishable from one set —
+   *   it now creates `input.sets` (default 1) rows, each carrying an
+   *   even share of the logged duration.
+   * - `startedAt` and `completedAt` used to both equal `loggedAt`, so the
+   *   session's own timestamps always implied zero elapsed time even
+   *   though `durationMinutes` was logged; `completedAt` is now
+   *   `loggedAt + durationMinutes`.
    */
   async logAdHocWorkout(input: AdHocWorkoutLogInput): Promise<WorkoutSession> {
     try {
@@ -99,13 +109,15 @@ export class WorkoutLogRepository extends BaseRepository<
             data: { name: input.exerciseName, category: input.category },
           }));
 
-        const durationSeconds = Math.round(input.durationMinutes * 60);
+        const setCount = input.sets ?? 1;
+        const durationSecondsPerSet = Math.round((input.durationMinutes * 60) / setCount);
+        const completedAt = new Date(input.loggedAt.getTime() + input.durationMinutes * 60 * 1000);
 
         return tx.workoutSession.create({
           data: {
             userId: input.userId,
             startedAt: input.loggedAt,
-            completedAt: input.loggedAt,
+            completedAt,
             status: 'completed',
             caloriesBurned: input.caloriesBurned,
             sessionExercises: {
@@ -113,12 +125,12 @@ export class WorkoutLogRepository extends BaseRepository<
                 exerciseId: exercise.id,
                 noteText: input.notes,
                 sets: {
-                  create: {
-                    setNumber: 1,
+                  create: Array.from({ length: setCount }, (_, index) => ({
+                    setNumber: index + 1,
                     reps: input.reps,
-                    durationSeconds,
+                    durationSeconds: durationSecondsPerSet,
                     completed: true,
-                  },
+                  })),
                 },
               },
             },

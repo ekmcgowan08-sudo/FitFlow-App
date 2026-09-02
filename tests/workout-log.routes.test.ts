@@ -126,7 +126,17 @@ describe("workout-log routes", () => {
       });
       const createArgs = prismaMock.workoutSession.create.mock.calls[0][0];
       expect(createArgs.data.sessionExercises.create.exerciseId).toBe("exercise-1");
-      expect(createArgs.data.sessionExercises.create.sets.create.reps).toBe(5);
+      // sets: 3 in the request must produce 3 WorkoutSet rows, not 1 —
+      // the original implementation always created exactly one set
+      // regardless of how many were actually performed.
+      const createdSets = createArgs.data.sessionExercises.create.sets.create;
+      expect(createdSets).toHaveLength(3);
+      expect(createdSets.map((s: { setNumber: number }) => s.setNumber)).toEqual([1, 2, 3]);
+      expect(createdSets.every((s: { reps: number }) => s.reps === 5)).toBe(true);
+      // 20 minutes split evenly across 3 sets = 400s each.
+      expect(createdSets.every((s: { durationSeconds: number }) => s.durationSeconds === 400)).toBe(true);
+      // completedAt must reflect the logged duration, not equal startedAt.
+      expect(createArgs.data.completedAt.getTime() - createArgs.data.startedAt.getTime()).toBe(20 * 60 * 1000);
       expect(res.body.session.sessionExercises[0].sets[0].id).toBe("set-1");
 
       // Logging a workout advances the member's "workout" streak
