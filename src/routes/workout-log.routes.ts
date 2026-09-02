@@ -1,0 +1,103 @@
+// Workout-log routes: validate() middleware + Zod schema suite +
+// repository pattern, wired together against the canonical schema.
+//
+// Fixes applied vs. the original example wiring (see
+// docs/artifacts/README.md "Known conflicts" #3 and
+// docs/architecture/canonical-schema-decisions.md):
+//   - GET no longer accepts an arbitrary `memberId` from a plain user —
+//     it's scoped to the caller's own id unless the caller is ADMIN/COACH.
+//     The original example passed `memberId ?? ''`, which silently became
+//     an empty-string lookup (matching nothing) whenever the query param
+//     was omitted.
+//   - GET pagination is real offset pagination (page/pageSize), not the
+//     original's `cursor: undefined` that never advanced past page 1.
+//   - POST creates the full WorkoutSession -> WorkoutSessionExercise ->
+//     WorkoutSet chain the validation contract promises, instead of a
+//     bare session row.
+
+// `authenticate` is applied once, centrally, in app.ts's protected
+// sub-router — see the note in src/routes/user.routes.ts for why it must
+// not also be run per-router here.
+
+import { Router, Response } from 'express';
+import { AuthenticatedRequest, hasRole } from '../auth/types';
+import { validate } from '../middleware/validate';
+import {
+  createWorkoutLogSchema,
+  listWorkoutLogsQuerySchema,
+  toExerciseCategory,
+  type CreateWorkoutLogInput,
+} from '../validation/workout-log.schema';
+import { WorkoutLogRepository } from '../repositories/workout-log.repository';
+import { prisma } from '../lib/prisma-client';
+import { ForbiddenError } from '../lib/errors';
+
+const router = Router();
+const workoutLogRepository = new WorkoutLogRepository(prisma);
+
+router.get('/workout-logs', validate({ query: listWorkoutLogsQuerySchema }), async (req, res: Response, next) => {
+  try {
+    const authedReq = req as AuthenticatedRequest;
+    const { memberId, category, from, to, page, pageSize } = req.validated!.query as {
+      memberId?: string;
+      category?: 'STRENGTH' | 'CARDIO' | 'MOBILITY' | 'SPORT' | 'RECOVERY';
+      from?: string;
+      to?: string;
+      page: number;
+      pageSize: number;
+    };
+
+    // A plain user may only ever list their own logs. Only ADMIN/COACH may
+    // request another member's logs via `memberId`.
+    const isElevated = hasRole(authedReq.user, 'ADMIN', 'COACH');
+    if (memberId && memberId !== authedReq.user.id && !isElevated) {
+      throw new ForbiddenError('You may only list your own workout logs.');
+    }
+    const targetUserId = isElevated && memberId ? memberId : authedReq.user.id;
+
+    const result = await workoutLogRepository.listForUser(targetUserId, {
+      category: category ? toExerciseCategory(category) : undefined,
+      from: from ? new Date(from) : undefined,
+      to: to ? new Date(to) : undefined,
+      page,
+      pageSize,
+    });
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/workout-logs', validate({ body: createWorkoutLogSchema }), async (req, res: Response, next) => {
+  try {
+    const authedReq = req as AuthenticatedRequest;
+    const input = req.validated!.body as CreateWorkoutLogInput;
+
+    // `memberId` in the body is never trusted for whose log this becomes
+    // unless the caller holds an elevated role — otherwise any user could
+    // write workout data into someone else's history.
+    const isElevated = hasRole(authedReq.user, 'ADMIN', 'COACH');
+    if (input.memberId !== authedReq.user.id && !isElevated) {
+      throw new ForbiddenError('You may only log workouts for yourself.');
+    }
+
+    const session = await workoutLogRepository.logAdHocWorkout({
+      userId: input.memberId,
+      exerciseName: input.exerciseName,
+      category: toExerciseCategory(input.category),
+      loggedAt: new Date(input.loggedAt),
+      sets: input.sets,
+      reps: input.reps,
+      durationMinutes: input.durationMinutes,
+      caloriesBurned: input.caloriesBurned,
+      notes: input.notes,
+    });
+
+    res.status(201).json({ session });
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default router;

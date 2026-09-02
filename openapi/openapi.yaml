@@ -1,0 +1,495 @@
+openapi: 3.1.0
+info:
+  title: FitFlow Suite API
+  version: "0.1.0"
+  summary: Auth, member-profile, and workout-log/session API for the consolidated FitFlow Suite backend.
+  description: |
+    This spec covers the routes actually implemented in src/routes/ and
+    src/auth/ against the canonical schema in prisma/schema.prisma. It
+    supersedes the two aspirational specs preserved under
+    docs/artifacts/openapi/ (product-api.yaml covered a much broader
+    unbuilt product surface; security-module-api.yaml covered only the
+    security module's standalone auth/RBAC slice before schema
+    reconciliation) — see docs/architecture/canonical-schema-decisions.md.
+  contact:
+    name: FitFlow Suite Engineering
+
+servers:
+  - url: http://localhost:3000
+    description: Local development (docker compose up)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+    description: Registration, login, refresh-token rotation, logout.
+  - name: members
+    description: Member profile read/update.
+  - name: workout-logs
+    description: Ad-hoc workout logging (repository-pattern wiring).
+  - name: workout-sessions
+    description: Workout-session CRUD scoped to the authenticated user.
+  - name: admin
+    description: Admin-only account management.
+
+paths:
+  /healthz:
+    get:
+      tags: [admin]
+      summary: Liveness/readiness probe
+      security: []
+      responses:
+        "200":
+          description: Service is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+
+  /v1/auth/register:
+    post:
+      tags: [auth]
+      summary: Create an account (always assigned the USER role)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+      responses:
+        "201":
+          description: Account created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccess"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Exchange email/password for a token pair
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccess"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate a refresh token into a new token pair
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        "200":
+          description: New token pair issued; the presented refresh token is now revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401":
+          description: Invalid, expired, or reused refresh token (reuse revokes every session for the user).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke a refresh token (optionally every session for the user)
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken: { type: string }
+                allSessions: { type: boolean, default: false }
+      responses:
+        "204":
+          description: Always returned, even for an unknown/already-revoked token (idempotent).
+
+  /v1/members:
+    get:
+      tags: [members]
+      summary: List member profiles (ADMIN/COACH only)
+      responses:
+        "200":
+          description: Paginated member list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items: { $ref: "#/components/schemas/Member" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/members/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [members]
+      summary: Get a member's profile and active goals (self, or ADMIN/COACH)
+      responses:
+        "200":
+          description: The member, with profile and active goals.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  member: { $ref: "#/components/schemas/Member" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [members]
+      summary: Update a member's profile (self, or ADMIN)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName: { type: string }
+                heightCm: { type: number }
+                weightKg: { type: number }
+                timezone: { type: string }
+      responses:
+        "200":
+          description: Updated profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile: { $ref: "#/components/schemas/UserProfile" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/workout-logs:
+    get:
+      tags: [workout-logs]
+      summary: List workout logs (own, or another member's via memberId if ADMIN/COACH)
+      parameters:
+        - name: memberId
+          in: query
+          schema: { type: string, format: uuid }
+          description: ADMIN/COACH only — a plain user is always scoped to themselves.
+        - name: category
+          in: query
+          schema: { $ref: "#/components/schemas/WorkoutCategory" }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated workout sessions with their exercises and sets.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/WorkoutSession" }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [workout-logs]
+      summary: Log an ad-hoc workout (creates session + exercise + set together)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [memberId, exerciseName, category, durationMinutes, loggedAt]
+              properties:
+                memberId: { type: string, format: uuid, description: Must equal the caller's id unless ADMIN/COACH. }
+                exerciseName: { type: string }
+                category: { $ref: "#/components/schemas/WorkoutCategory" }
+                sets: { type: integer, description: Required when category is STRENGTH. }
+                reps: { type: integer, description: Required when category is STRENGTH. }
+                durationMinutes: { type: number }
+                caloriesBurned: { type: number }
+                loggedAt: { type: string, format: date-time }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Created workout session with its exercise and set.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session: { $ref: "#/components/schemas/WorkoutSession" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/workout-sessions:
+    get:
+      tags: [workout-sessions]
+      summary: List the caller's own workout sessions
+      responses:
+        "200":
+          description: Sessions, most recent first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WorkoutSession" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/workout-sessions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [workout-sessions]
+      summary: Get one of the caller's own workout sessions
+      responses:
+        "200":
+          description: The session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkoutSession" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [workout-sessions]
+      summary: Update the status of one of the caller's own workout sessions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [in_progress, completed, cancelled] }
+      responses:
+        "200":
+          description: Updated session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkoutSession" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/admin/users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [admin]
+      summary: Delete a user account (ADMIN only)
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    ValidationError:
+      description: Request failed schema validation.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing, invalid, or expired bearer token.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Authenticated, but not permitted to perform this action.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource does not exist, or is not owned by the caller.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Resource already exists.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Rate limit exceeded.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: {}
+
+    WorkoutCategory:
+      type: string
+      enum: [STRENGTH, CARDIO, MOBILITY, SPORT, RECOVERY]
+
+    TokenPair:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        tokenType: { type: string, example: Bearer }
+        accessTokenExpiresIn: { type: integer, description: Seconds. }
+        refreshTokenExpiresAt: { type: string, format: date-time }
+
+    AuthSuccess:
+      allOf:
+        - $ref: "#/components/schemas/TokenPair"
+        - type: object
+          properties:
+            user:
+              type: object
+              properties:
+                id: { type: string, format: uuid }
+                email: { type: string, format: email }
+
+    UserProfile:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        firstName: { type: string, nullable: true }
+        lastName: { type: string, nullable: true }
+        heightCm: { type: number, nullable: true }
+        currentWeightKg: { type: number, nullable: true }
+        timezone: { type: string }
+
+    Member:
+      type: object
+      description: A User row with passwordHash always omitted (never returned by the API).
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        profile:
+          allOf:
+            - $ref: "#/components/schemas/UserProfile"
+          nullable: true
+        goals:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              category: { type: string }
+              title: { type: string }
+              status: { type: string }
+
+    WorkoutSet:
+      type: object
+      properties:
+        id: { type: string }
+        setNumber: { type: integer }
+        reps: { type: integer, nullable: true }
+        weightKg: { type: number, nullable: true }
+        durationSeconds: { type: integer, nullable: true }
+        completed: { type: boolean }
+
+    WorkoutSessionExercise:
+      type: object
+      properties:
+        id: { type: string }
+        exerciseId: { type: string }
+        noteText: { type: string, nullable: true }
+        sets:
+          type: array
+          items: { $ref: "#/components/schemas/WorkoutSet" }
+
+    WorkoutSession:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string, format: uuid }
+        planSessionId: { type: string, nullable: true }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [in_progress, completed, cancelled] }
+        caloriesBurned: { type: integer, nullable: true }
+        sessionExercises:
+          type: array
+          items: { $ref: "#/components/schemas/WorkoutSessionExercise" }

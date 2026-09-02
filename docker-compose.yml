@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fitflow
+      POSTGRES_PASSWORD: fitflow_dev_password
+      POSTGRES_DB: fitflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - fitflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fitflow -d fitflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://fitflow:fitflow_dev_password@postgres:5432/fitflow?schema=public
+      JWT_ACCESS_SECRET: dev_access_secret_change_me_please_32chars_min
+      REFRESH_TOKEN_PEPPER: dev_refresh_pepper_change_me_please_32chars
+      JWT_ISSUER: fitflow-suite
+      JWT_AUDIENCE: fitflow-suite-clients
+      ACCESS_TOKEN_TTL_SECONDS: "900"
+      REFRESH_TOKEN_TTL_DAYS: "30"
+      PORT: "3000"
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    # Applies every committed migration under prisma/migrations/ in order
+    # (creating the schema on a brand-new database, or bringing an
+    # existing one up to date) before starting the server. This is the
+    # production-safe equivalent of `prisma db push` — it never infers or
+    # applies unreviewed schema changes, only the SQL already checked in.
+    command: >
+      sh -c "npx prisma migrate deploy --schema prisma/schema.prisma && node dist/server.js"
+
+volumes:
+  fitflow_pgdata:

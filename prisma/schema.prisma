@@ -1,0 +1,678 @@
+// FitFlow Suite — canonical Prisma schema.
+//
+// This reconciles the three schemas preserved under docs/artifacts/prisma/:
+//   - product-schema.prisma          (broad Member-centric product model)
+//   - security-module-schema.prisma  (narrow User/roles/refresh-token identity slice)
+//   - the repository-pattern package's implied User/UserProfile/Goal/Streak/
+//     WorkoutSession/WorkoutSet model (docs/artifacts/repository-pattern/)
+//
+// See docs/architecture/canonical-schema-decisions.md for the reasoning
+// behind every rename and merge below.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum RoleCode {
+  ADMIN
+  COACH
+  SUBSCRIBER
+  USER
+  GYM_PARTNER
+  SUPPORT_OPS
+
+  @@map("role_code")
+}
+
+enum CoachType {
+  ai
+  human
+}
+
+enum GoalStyle {
+  fat_loss
+  muscle_gain
+  maintenance
+  endurance
+  recomposition
+}
+
+enum WorkoutLocation {
+  home
+  gym
+  hybrid
+}
+
+enum DietStyle {
+  balanced
+  high_protein
+  low_carb
+  vegetarian
+  vegan
+  pescatarian
+}
+
+enum SmartwatchPlatform {
+  apple_health
+  wear_os
+  garmin
+  fitbit
+  none
+}
+
+enum GoalCategory {
+  weight
+  strength
+  nutrition
+  consistency
+  sleep
+  budget
+}
+
+enum GoalStatus {
+  active
+  paused
+  achieved
+  archived
+}
+
+enum MealType {
+  breakfast
+  lunch
+  dinner
+  snack
+  drink
+}
+
+enum ExerciseCategory {
+  strength
+  cardio
+  mobility
+  recovery
+  sport
+}
+
+enum WorkoutSessionStatus {
+  in_progress
+  completed
+  cancelled
+}
+
+enum CheckinSource {
+  qr
+  geofence
+  manual
+}
+
+enum AchievementStatus {
+  locked
+  in_progress
+  unlocked
+}
+
+enum SexAtBirth {
+  female
+  male
+  intersex
+  undisclosed
+}
+
+// ---------------------------------------------------------------------------
+// Identity & access
+//
+// `User` is the sole identity/auth root (there is no separate `Member`
+// table). Everything that was on the old broad schema's `Member` model
+// lives on `User` + `UserProfile` + `UserPreference` + `UserHealthProfile`
+// instead, all keyed by `User.id`.
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique @db.VarChar(320)
+  passwordHash String   @map("password_hash")
+  status       String   @default("active") @db.VarChar(32)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  roles         UserRole[]
+  refreshTokens RefreshToken[]
+  profile       UserProfile?
+  preferences   UserPreference?
+  healthProfile UserHealthProfile?
+  allergies     UserAllergy[]
+  medicalNotes  UserMedicalNote[]
+  coachProfile  CoachProfile?
+
+  // Coach <-> client relationship, from both sides.
+  coachAssignments  CoachAssignment[] @relation("ClientToCoach")
+  clientAssignments CoachAssignment[] @relation("CoachToClients")
+
+  goals                  Goal[]
+  streaks                Streak[]
+  mealPlans              MealPlan[]
+  groceryPlans           GroceryPlan[]
+  workoutPlans           WorkoutPlan[]
+  workoutSessions        WorkoutSession[]
+  nutritionLogs          NutritionLog[]
+  gymCheckIns            GymCheckIn[]
+  badges                 Badge[]
+  achievements           Achievement[]
+  wearableDailySummaries WearableDailySummary[]
+
+  @@map("users")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  code        RoleCode @unique
+  description String?
+
+  users UserRole[]
+
+  @@map("roles")
+}
+
+/// Explicit many-to-many join so a user can hold multiple roles
+/// (e.g. a coach who is also a paying subscriber).
+model UserRole {
+  userId String @map("user_id")
+  roleId Int    @map("role_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  revokedAt  DateTime? @map("revoked_at")
+  replacedBy String?   @map("replaced_by")
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// Identity-adjacent profile fields (name, body stats, timezone). Kept
+/// separate from `User` so auth lookups never have to select/join profile
+/// columns they don't need.
+model UserProfile {
+  userId          String      @id @map("user_id")
+  firstName       String?     @map("first_name") @db.VarChar(100)
+  lastName        String?     @map("last_name") @db.VarChar(100)
+  birthDate       DateTime?   @map("birth_date") @db.Date
+  sexAtBirth      SexAtBirth? @map("sex_at_birth")
+  heightCm        Decimal?    @map("height_cm") @db.Decimal(6, 2)
+  currentWeightKg Decimal?    @map("current_weight_kg") @db.Decimal(6, 2)
+  timezone        String      @default("America/Chicago") @db.VarChar(64)
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+/// App/UX preferences — split from `UserProfile` because it changes on a
+/// different cadence (settings screen) than identity/body-stat fields.
+model UserPreference {
+  userId             String             @id @map("user_id")
+  goalStyle          GoalStyle?         @map("goal_style")
+  workoutLocation    WorkoutLocation?   @map("workout_location")
+  dietStyle          DietStyle?         @map("diet_style")
+  themeColor         String?            @map("theme_color")
+  coachPreference    String?            @map("coach_preference")
+  smartwatchPlatform SmartwatchPlatform @default(none) @map("smartwatch_platform")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model UserHealthProfile {
+  userId             String   @id @map("user_id")
+  calorieTarget      Int?     @map("calorie_target")
+  proteinTargetGrams Int?     @map("protein_target_grams")
+  carbTargetGrams    Int?     @map("carb_target_grams")
+  fatTargetGrams     Int?     @map("fat_target_grams")
+  waterTargetOz      Int?     @map("water_target_oz")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_health_profiles")
+}
+
+model UserAllergy {
+  id          String @id @default(uuid())
+  userId      String @map("user_id")
+  allergyName String @map("allergy_name")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, allergyName])
+  @@map("user_allergies")
+}
+
+model UserMedicalNote {
+  id       String @id @default(uuid())
+  userId   String @map("user_id")
+  noteText String @map("note_text")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_medical_notes")
+}
+
+/// A human coach's public-facing profile. There is no row here for an "ai"
+/// coach — AI-authored content is represented by `coachSource: CoachType`
+/// on `WorkoutPlan`/`MealPlan` instead of a fake `User`.
+model CoachProfile {
+  userId            String  @id @map("user_id")
+  displayName       String  @map("display_name") @db.VarChar(255)
+  acceptsNewClients Boolean @default(true) @map("accepts_new_clients")
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialties CoachSpecialty[]
+
+  @@map("coach_profiles")
+}
+
+model CoachSpecialty {
+  id          String @id @default(uuid())
+  coachUserId String @map("coach_user_id")
+  specialty   String
+
+  coach CoachProfile @relation(fields: [coachUserId], references: [userId], onDelete: Cascade)
+
+  @@unique([coachUserId, specialty])
+  @@map("coach_specialties")
+}
+
+model CoachAssignment {
+  coachUserId        String    @map("coach_user_id")
+  clientUserId       String    @map("client_user_id")
+  relationshipStatus String    @default("active") @map("relationship_status") @db.VarChar(32)
+  startsOn           DateTime? @map("starts_on") @db.Date
+  notes              String?
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  coach  User @relation("CoachToClients", fields: [coachUserId], references: [id], onDelete: Cascade)
+  client User @relation("ClientToCoach", fields: [clientUserId], references: [id], onDelete: Cascade)
+
+  @@id([coachUserId, clientUserId])
+  @@map("coach_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// Goals & streaks
+// ---------------------------------------------------------------------------
+
+model Goal {
+  id          String       @id @default(uuid())
+  userId      String       @map("user_id")
+  category    GoalCategory
+  title       String
+  targetValue Decimal?     @map("target_value") @db.Decimal(10, 2)
+  targetUnit  String?      @map("target_unit")
+  dueDate     DateTime?    @map("due_date") @db.Date
+  status      GoalStatus   @default(active)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("goals")
+}
+
+/// Field names (`currentCount`/`bestCount`) match the repository-pattern
+/// package's `streak.upsert(...)` calls, not the old schema's
+/// `currentDays`/`longestDays`.
+model Streak {
+  id           String @id @default(uuid())
+  userId       String @map("user_id")
+  streakType   String @map("streak_type")
+  currentCount Int    @default(0) @map("current_count")
+  bestCount    Int    @default(0) @map("best_count")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, streakType])
+  @@map("streaks")
+}
+
+// ---------------------------------------------------------------------------
+// Nutrition
+// ---------------------------------------------------------------------------
+
+model MealPlan {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  title         String
+  dailyCalories Int?      @map("daily_calories")
+  coachSource   CoachType @default(ai) @map("coach_source")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meals MealPlanMeal[]
+
+  @@index([userId])
+  @@map("meal_plans")
+}
+
+model MealPlanMeal {
+  id               String   @id @default(uuid())
+  mealPlanId       String   @map("meal_plan_id")
+  dayOfWeek        String   @map("day_of_week")
+  mealType         MealType @map("meal_type")
+  recipeName       String   @map("recipe_name")
+  calories         Int?
+  estimatedCostUsd Decimal? @map("estimated_cost_usd") @db.Decimal(10, 2)
+
+  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  @@map("meal_plan_meals")
+}
+
+model GroceryPlan {
+  id                    String   @id @default(uuid())
+  userId                String   @map("user_id")
+  totalEstimatedCostUsd Decimal? @map("total_estimated_cost_usd") @db.Decimal(10, 2)
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items GroceryPlanItem[]
+
+  @@index([userId])
+  @@map("grocery_plans")
+}
+
+model GroceryPlanItem {
+  id            String   @id @default(uuid())
+  groceryPlanId String   @map("grocery_plan_id")
+  storeName     String   @map("store_name")
+  itemName      String   @map("item_name")
+  quantity      String?
+  unitPriceUsd  Decimal? @map("unit_price_usd") @db.Decimal(10, 2)
+  bestDeal      Boolean  @default(false) @map("best_deal")
+
+  groceryPlan GroceryPlan @relation(fields: [groceryPlanId], references: [id], onDelete: Cascade)
+
+  @@map("grocery_plan_items")
+}
+
+model NutritionLog {
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  loggedAt           DateTime @map("logged_at")
+  mealType           MealType @map("meal_type")
+  itemName           String   @map("item_name")
+  servingDescription String?  @map("serving_description")
+  calories           Int?
+  proteinGrams       Decimal? @map("protein_grams") @db.Decimal(8, 2)
+  carbsGrams         Decimal? @map("carbs_grams") @db.Decimal(8, 2)
+  fatGrams           Decimal? @map("fat_grams") @db.Decimal(8, 2)
+  waterOz            Decimal? @map("water_oz") @db.Decimal(8, 2)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, loggedAt(sort: Desc)])
+  @@map("nutrition_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Training
+//
+// Two distinct concepts, kept as separate models on purpose:
+//   - `WorkoutPlan` / `WorkoutPlanSession` / `WorkoutPlanSessionExercise` —
+//     the coach/AI-authored TEMPLATE (a recurring weekly program).
+//   - `WorkoutSession` / `WorkoutSessionExercise` / `WorkoutSet` — what a
+//     user actually LOGGED, optionally against a template session. This is
+//     the shape the repository-pattern package and the security module's
+//     routes already call (`workoutSession.userId`, `.sessionExercises`,
+//     `.sets`, `workoutSet.create(...)`).
+// ---------------------------------------------------------------------------
+
+model Exercise {
+  id            String           @id @default(uuid())
+  name          String
+  category      ExerciseCategory
+  equipment     String?
+  whyItWorks    String?          @map("why_it_works")
+  howToVideoUrl String?          @map("how_to_video_url")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  primaryMuscles   ExercisePrimaryMuscle[]
+  secondaryMuscles ExerciseSecondaryMuscle[]
+  instructions     ExerciseInstruction[]
+  planSessionLinks WorkoutPlanSessionExercise[]
+  sessionLinks     WorkoutSessionExercise[]
+
+  @@map("exercises")
+}
+
+model ExercisePrimaryMuscle {
+  id         String @id @default(uuid())
+  exerciseId String @map("exercise_id")
+  muscleName String @map("muscle_name")
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([exerciseId, muscleName])
+  @@map("exercise_primary_muscles")
+}
+
+model ExerciseSecondaryMuscle {
+  id         String @id @default(uuid())
+  exerciseId String @map("exercise_id")
+  muscleName String @map("muscle_name")
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([exerciseId, muscleName])
+  @@map("exercise_secondary_muscles")
+}
+
+model ExerciseInstruction {
+  id              String @id @default(uuid())
+  exerciseId      String @map("exercise_id")
+  stepNumber      Int    @map("step_number")
+  instructionText String @map("instruction_text")
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([exerciseId, stepNumber])
+  @@map("exercise_instructions")
+}
+
+model WorkoutPlan {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  title       String
+  coachSource CoachType @map("coach_source")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions WorkoutPlanSession[]
+
+  @@index([userId])
+  @@map("workout_plans")
+}
+
+model WorkoutPlanSession {
+  id               String @id @default(uuid())
+  workoutPlanId    String @map("workout_plan_id")
+  dayOfWeek        String @map("day_of_week")
+  focus            String
+  estimatedMinutes Int?   @map("estimated_minutes")
+  restTimerSeconds Int?   @map("rest_timer_seconds")
+
+  workoutPlan    WorkoutPlan                  @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+  exercises      WorkoutPlanSessionExercise[]
+  loggedSessions WorkoutSession[]
+
+  @@index([workoutPlanId])
+  @@map("workout_plan_sessions")
+}
+
+model WorkoutPlanSessionExercise {
+  id                String  @id @default(uuid())
+  planSessionId     String  @map("plan_session_id")
+  exerciseId        String  @map("exercise_id")
+  targetSets        Int?    @map("target_sets")
+  targetReps        String? @map("target_reps")
+  targetWorkSeconds Int?    @map("target_work_seconds")
+  noteText          String? @map("note_text")
+  sortOrder         Int     @default(1) @map("sort_order")
+
+  planSession WorkoutPlanSession @relation(fields: [planSessionId], references: [id], onDelete: Cascade)
+  exercise    Exercise           @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  @@map("workout_plan_session_exercises")
+}
+
+/// A user's logged/in-progress workout. `planSessionId` is optional so an
+/// ad-hoc workout (not following any plan) is still representable.
+model WorkoutSession {
+  id             String               @id @default(uuid())
+  userId         String               @map("user_id")
+  planSessionId  String?              @map("plan_session_id")
+  startedAt      DateTime             @map("started_at")
+  completedAt    DateTime?            @map("completed_at")
+  status         WorkoutSessionStatus @default(in_progress)
+  caloriesBurned Int?                 @map("calories_burned")
+
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planSession      WorkoutPlanSession?      @relation(fields: [planSessionId], references: [id], onDelete: SetNull)
+  sessionExercises WorkoutSessionExercise[]
+
+  @@index([userId, startedAt(sort: Desc)])
+  @@map("workout_sessions")
+}
+
+model WorkoutSessionExercise {
+  id               String  @id @default(uuid())
+  workoutSessionId String  @map("workout_session_id")
+  exerciseId       String  @map("exercise_id")
+  sortOrder        Int     @default(1) @map("sort_order")
+  noteText         String? @map("note_text")
+
+  workoutSession WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  exercise       Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  sets           WorkoutSet[]
+
+  @@map("workout_session_exercises")
+}
+
+model WorkoutSet {
+  id                String   @id @default(uuid())
+  sessionExerciseId String   @map("session_exercise_id")
+  setNumber         Int      @map("set_number")
+  reps              Int?
+  weightKg          Decimal? @map("weight_kg") @db.Decimal(6, 2)
+  durationSeconds   Int?     @map("duration_seconds")
+  completed         Boolean  @default(false)
+
+  sessionExercise WorkoutSessionExercise @relation(fields: [sessionExerciseId], references: [id], onDelete: Cascade)
+
+  @@index([sessionExerciseId])
+  @@map("workout_sets")
+}
+
+// ---------------------------------------------------------------------------
+// Gyms & check-ins
+// ---------------------------------------------------------------------------
+
+model Gym {
+  id        String   @id @default(uuid())
+  name      String
+  city      String?
+  state     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  checkIns GymCheckIn[]
+
+  @@map("gyms")
+}
+
+model GymCheckIn {
+  id           String        @id @default(uuid())
+  userId       String        @map("user_id")
+  gymId        String        @map("gym_id")
+  checkedInAt  DateTime      @map("checked_in_at")
+  source       CheckinSource
+  pointsEarned Int           @default(0) @map("points_earned")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gym  Gym  @relation(fields: [gymId], references: [id], onDelete: Restrict)
+
+  @@index([userId, checkedInAt(sort: Desc)])
+  @@map("gym_check_ins")
+}
+
+// ---------------------------------------------------------------------------
+// Gamification
+// ---------------------------------------------------------------------------
+
+model Badge {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  name       String
+  unlockedAt DateTime? @map("unlocked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("badges")
+}
+
+model Achievement {
+  id              String            @id @default(uuid())
+  userId          String            @map("user_id")
+  title           String
+  progressPercent Decimal           @default(0) @map("progress_percent") @db.Decimal(5, 2)
+  status          AchievementStatus @default(locked)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("achievements")
+}
+
+// ---------------------------------------------------------------------------
+// Wearables
+// ---------------------------------------------------------------------------
+
+model WearableDailySummary {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  summaryDate      DateTime @map("summary_date") @db.Date
+  steps            Int?
+  activeCalories   Int?     @map("active_calories")
+  exerciseMinutes  Int?     @map("exercise_minutes")
+  restingHeartRate Int?     @map("resting_heart_rate")
+  sleepHours       Decimal? @map("sleep_hours") @db.Decimal(4, 2)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, summaryDate])
+  @@index([userId, summaryDate(sort: Desc)])
+  @@map("wearable_daily_summaries")
+}
