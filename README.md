@@ -41,11 +41,14 @@ A TypeScript/Express/Prisma/PostgreSQL API lives at the repo root:
 Every list/create/update/delete endpoint scoped to a member follows the
 same rule: a plain user can only ever act on their own rows; ADMIN can
 act on anyone's; COACH can act on their own and, where it makes product
-sense (viewing logs, listing/reading clients' data), on their clients' —
-but writes to another member's preferences, health targets, or wearable
-data are ADMIN-only even for their coach. A resource id that exists but
-isn't the caller's returns 404, never 403 — existence is never disclosed
-to a caller with no relationship to it.
+sense (viewing logs, listing/reading clients' data), on their *actual*
+clients' — enforced by checking for an active `CoachAssignment` row
+(`src/rbac/member-scope.ts`), not just the COACH role, so a coach with no
+assignment to a member has no more access than a stranger. Writes to
+another member's preferences, health targets, or wearable data are
+ADMIN-only even for their coach. A resource id that exists but isn't the
+caller's returns 404, never 403 — existence is never disclosed to a
+caller with no relationship to it.
 
 Every route above (and the schema/migration/seed/Docker pieces below) has
 been exercised against a real running Postgres instance — not just the

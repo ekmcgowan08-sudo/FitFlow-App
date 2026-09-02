@@ -1,10 +1,12 @@
 // Extended member-profile routes: app preferences, health targets, and
 // allergies — split out of member.routes.ts because they change on a
 // different cadence and (for health-profile) carry more sensitive data
-// than the base profile. Reads are self, or ADMIN/COACH (a coach
-// planning meals/workouts needs this); writes are self, or ADMIN only —
-// a coach may see a client's targets but not silently change them.
-// `authenticate` runs once, centrally, in app.ts's protected sub-router.
+// than the base profile. Reads are self, ADMIN, or a COACH with an
+// active CoachAssignment to that member (see src/rbac/member-scope.ts —
+// a coach planning meals/workouts needs this, but only for their actual
+// clients); writes are self, or ADMIN only — a coach may see a client's
+// targets but not silently change them. `authenticate` runs once,
+// centrally, in app.ts's protected sub-router.
 
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, hasRole } from '../auth/types';
@@ -23,14 +25,11 @@ import {
   type CreateMedicalNoteInput,
 } from '../validation/profile-extensions.schema';
 import { prisma } from '../lib/prisma-client';
+import { canAccessMemberRecord } from '../rbac/member-scope';
 import { ForbiddenError, NotFoundError } from '../lib/errors';
 import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
-
-function canRead(req: AuthenticatedRequest, targetUserId: string): boolean {
-  return req.user.id === targetUserId || hasRole(req.user, 'ADMIN', 'COACH');
-}
 
 function canWrite(req: AuthenticatedRequest, targetUserId: string): boolean {
   return req.user.id === targetUserId || hasRole(req.user, 'ADMIN');
@@ -55,7 +54,9 @@ router.get(
     try {
       const authedReq = req as AuthenticatedRequest;
       const { userId } = req.validated!.params as { userId: string };
-      if (!canRead(authedReq, userId)) throw new ForbiddenError('You may not view this member’s preferences.');
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, userId))) {
+        throw new ForbiddenError('You may not view this member’s preferences.');
+      }
 
       const preferences = await prisma.userPreference.findUnique({ where: { userId } });
       res.json({ preferences });
@@ -97,7 +98,9 @@ router.get(
     try {
       const authedReq = req as AuthenticatedRequest;
       const { userId } = req.validated!.params as { userId: string };
-      if (!canRead(authedReq, userId)) throw new ForbiddenError('You may not view this member’s health profile.');
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, userId))) {
+        throw new ForbiddenError('You may not view this member’s health profile.');
+      }
 
       const healthProfile = await prisma.userHealthProfile.findUnique({ where: { userId } });
       res.json({ healthProfile });
@@ -141,7 +144,9 @@ router.get(
     try {
       const authedReq = req as AuthenticatedRequest;
       const { userId } = req.validated!.params as { userId: string };
-      if (!canRead(authedReq, userId)) throw new ForbiddenError('You may not view this member’s allergies.');
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, userId))) {
+        throw new ForbiddenError('You may not view this member’s allergies.');
+      }
 
       const allergies = await prisma.userAllergy.findMany({ where: { userId } });
       res.json({ allergies });

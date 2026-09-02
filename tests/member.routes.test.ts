@@ -60,6 +60,17 @@ describe("member routes", () => {
         omit: { passwordHash: true },
       });
     });
+
+    it("forbids a COACH from listing the entire member directory (use GET /v1/coach/clients instead)", async () => {
+      mockAuthedUser("coach-1", ["COACH"]);
+
+      const res = await request(app)
+        .get("/v1/members")
+        .set("Authorization", `Bearer ${tokenFor("coach-1")}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.user.findMany).not.toHaveBeenCalled();
+    });
   });
 
   describe("GET /v1/members/:id", () => {
@@ -109,9 +120,10 @@ describe("member routes", () => {
       expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1); // only the auth lookup
     });
 
-    it("allows a COACH to read a client's profile", async () => {
+    it("allows a COACH to read the profile of a client they're actively assigned to", async () => {
       mockAuthedUser("coach-1", ["COACH"]);
       const clientId = "22222222-2222-4222-8222-222222222222";
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce({ relationshipStatus: "active" });
       prismaMock.user.findUnique.mockResolvedValueOnce({
         id: clientId,
         profile: { firstName: "Client" },
@@ -124,6 +136,19 @@ describe("member routes", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.member.id).toBe(clientId);
+    });
+
+    it("forbids a COACH with no active assignment from reading a member's profile", async () => {
+      mockAuthedUser("coach-1", ["COACH"]);
+      const otherId = "22222222-2222-4222-8222-222222222222";
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .get(`/v1/members/${otherId}`)
+        .set("Authorization", `Bearer ${tokenFor("coach-1")}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1); // only the auth lookup
     });
   });
 

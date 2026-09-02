@@ -47,8 +47,9 @@ describe("profile-extensions routes", () => {
       expect(res.status).toBe(200);
     });
 
-    it("lets a COACH read a client's preferences but forbids a plain user", async () => {
+    it("lets a COACH read an actively-assigned client's preferences but forbids a plain user", async () => {
       mockAuthedUser("coach-1", ["COACH"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce({ relationshipStatus: "active" });
       prismaMock.userPreference.findUnique.mockResolvedValueOnce(null);
 
       const res = await request(app)
@@ -56,6 +57,18 @@ describe("profile-extensions routes", () => {
         .set("Authorization", `Bearer ${tokenFor("coach-1")}`);
 
       expect(res.status).toBe(200);
+    });
+
+    it("forbids a COACH with no active assignment from reading a member's preferences", async () => {
+      mockAuthedUser("coach-1", ["COACH"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .get(`/v1/members/${OTHER_ID}/preferences`)
+        .set("Authorization", `Bearer ${tokenFor("coach-1")}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.userPreference.findUnique).not.toHaveBeenCalled();
     });
 
     it("forbids a plain user from reading another member's preferences", async () => {

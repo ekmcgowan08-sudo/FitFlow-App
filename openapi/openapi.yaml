@@ -27,7 +27,7 @@ tags:
   - name: members
     description: Member profile read/update.
   - name: profile-extensions
-    description: App preferences, health targets, and allergies. Reads are self or ADMIN/COACH; writes are self or ADMIN only.
+    description: App preferences, health targets, and allergies. Reads are self, ADMIN, or a COACH assigned to that member; writes are self or ADMIN only.
   - name: workout-logs
     description: Ad-hoc workout logging (repository-pattern wiring).
   - name: workout-sessions
@@ -53,7 +53,7 @@ tags:
   - name: grocery-plans
     description: Shopping lists with per-item pricing.
   - name: gamification
-    description: Badges and achievements. Reads are self or ADMIN/COACH; writes are ADMIN only (system-awarded).
+    description: Badges and achievements. Reads are self, ADMIN, or a COACH assigned to that member; writes are ADMIN only (system-awarded).
   - name: wearables
     description: Daily wearable sync (steps, sleep, heart rate).
   - name: admin
@@ -176,7 +176,7 @@ paths:
   /v1/members:
     get:
       tags: [members]
-      summary: List member profiles (ADMIN/COACH only)
+      summary: List member profiles (ADMIN only)
       responses:
         "200":
           description: Paginated member list.
@@ -201,7 +201,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       tags: [members]
-      summary: Get a member's profile and active goals (self, or ADMIN/COACH)
+      summary: Get a member's profile and active goals (self, ADMIN, or a COACH assigned to that member)
       responses:
         "200":
           description: The member, with profile and active goals.
@@ -243,12 +243,12 @@ paths:
   /v1/workout-logs:
     get:
       tags: [workout-logs]
-      summary: List workout logs (own, or another member's via memberId if ADMIN/COACH)
+      summary: List workout logs (own, or another member's via memberId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: memberId
           in: query
           schema: { type: string, format: uuid }
-          description: ADMIN/COACH only — a plain user is always scoped to themselves.
+          description: ADMIN, or a COACH assigned to that member, only — a plain user is always scoped to themselves.
         - name: category
           in: query
           schema: { $ref: "#/components/schemas/WorkoutCategory" }
@@ -291,7 +291,7 @@ paths:
               type: object
               required: [memberId, exerciseName, category, durationMinutes, loggedAt]
               properties:
-                memberId: { type: string, format: uuid, description: Must equal the caller's id unless ADMIN/COACH. }
+                memberId: { type: string, format: uuid, description: Must equal the caller's id unless ADMIN, or a COACH assigned to that member. }
                 exerciseName: { type: string }
                 category: { $ref: "#/components/schemas/WorkoutCategory" }
                 sets: { type: integer, description: Required when category is STRENGTH. }
@@ -367,7 +367,7 @@ paths:
   /v1/goals:
     get:
       tags: [goals]
-      summary: List goals (own, or another member's via userId if ADMIN/COACH)
+      summary: List goals (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: userId
           in: query
@@ -402,7 +402,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [goals]
-      summary: Create a goal (own, or another member's via userId if ADMIN/COACH)
+      summary: Create a goal (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       requestBody:
         required: true
         content:
@@ -438,7 +438,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       tags: [goals]
-      summary: Get a goal (self, or ADMIN/COACH)
+      summary: Get a goal (self, ADMIN, or a COACH assigned to that member)
       responses:
         "200":
           description: The goal.
@@ -456,7 +456,7 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
     patch:
       tags: [goals]
-      summary: Update a goal (self, or ADMIN/COACH)
+      summary: Update a goal (self, ADMIN, or a COACH assigned to that member)
       requestBody:
         content:
           application/json:
@@ -483,7 +483,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [goals]
-      summary: Delete a goal (self, or ADMIN/COACH)
+      summary: Delete a goal (self, ADMIN, or a COACH assigned to that member)
       responses:
         "204": { description: Deleted. }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -492,7 +492,7 @@ paths:
   /v1/streaks:
     get:
       tags: [streaks]
-      summary: List streak counters (own, or another member's via userId if ADMIN/COACH)
+      summary: List streak counters (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: userId
           in: query
@@ -514,7 +514,7 @@ paths:
   /v1/nutrition-logs:
     get:
       tags: [nutrition-logs]
-      summary: List nutrition logs (own, or another member's via userId if ADMIN/COACH)
+      summary: List nutrition logs (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: userId
           in: query
@@ -553,7 +553,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [nutrition-logs]
-      summary: Log a food/drink entry (own, or another member's via userId if ADMIN/COACH)
+      summary: Log a food/drink entry (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       requestBody:
         required: true
         content:
@@ -593,7 +593,7 @@ paths:
         schema: { type: string, format: uuid }
     patch:
       tags: [nutrition-logs]
-      summary: Update a nutrition log entry (self, or ADMIN/COACH)
+      summary: Update a nutrition log entry (self, ADMIN, or a COACH assigned to that member)
       requestBody:
         content:
           application/json:
@@ -623,7 +623,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [nutrition-logs]
-      summary: Delete a nutrition log entry (self, or ADMIN/COACH)
+      summary: Delete a nutrition log entry (self, ADMIN, or a COACH assigned to that member)
       responses:
         "204": { description: Deleted. }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -793,7 +793,7 @@ paths:
   /v1/gym-checkins:
     get:
       tags: [gyms]
-      summary: List gym check-ins (own, or another member's via userId if ADMIN/COACH)
+      summary: List gym check-ins (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: userId
           in: query
@@ -822,7 +822,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [gyms]
-      summary: Record a gym check-in (own, or another member's via userId if ADMIN/COACH)
+      summary: Record a gym check-in (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       description: |
         A `qr` or `geofence` check-in earns 10 points and advances the
         member's `gym_checkin` streak; a `manual` (self-reported, unverified)
@@ -941,7 +941,7 @@ paths:
   /v1/workout-plans:
     get:
       tags: [workout-plans]
-      summary: List workout plans (own, or another member's via userId if ADMIN/COACH)
+      summary: List workout plans (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: userId
           in: query
@@ -970,7 +970,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [workout-plans]
-      summary: Create a workout plan with nested sessions and exercises (own, or another member's via userId if ADMIN/COACH)
+      summary: Create a workout plan with nested sessions and exercises (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       requestBody:
         required: true
         content:
@@ -1025,7 +1025,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       tags: [workout-plans]
-      summary: Get a plan with its sessions and exercises (self, or ADMIN/COACH)
+      summary: Get a plan with its sessions and exercises (self, ADMIN, or a COACH assigned to that member)
       responses:
         "200":
           description: The plan.
@@ -1039,7 +1039,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
       tags: [workout-plans]
-      summary: Rename a plan (self, or ADMIN/COACH)
+      summary: Rename a plan (self, ADMIN, or a COACH assigned to that member)
       requestBody:
         content:
           application/json:
@@ -1062,7 +1062,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [workout-plans]
-      summary: Delete a plan, cascading to its sessions and their exercises (self, or ADMIN/COACH)
+      summary: Delete a plan, cascading to its sessions and their exercises (self, ADMIN, or a COACH assigned to that member)
       responses:
         "204": { description: Deleted. }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -1071,7 +1071,7 @@ paths:
   /v1/meal-plans:
     get:
       tags: [meal-plans]
-      summary: List meal plans (own, or another member's via userId if ADMIN/COACH)
+      summary: List meal plans (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: userId
           in: query
@@ -1100,7 +1100,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [meal-plans]
-      summary: Create a meal plan with nested meals (own, or another member's via userId if ADMIN/COACH)
+      summary: Create a meal plan with nested meals (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       requestBody:
         required: true
         content:
@@ -1145,7 +1145,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       tags: [meal-plans]
-      summary: Get a plan with its meals (self, or ADMIN/COACH)
+      summary: Get a plan with its meals (self, ADMIN, or a COACH assigned to that member)
       responses:
         "200":
           description: The plan.
@@ -1159,7 +1159,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [meal-plans]
-      summary: Delete a plan, cascading to its meals (self, or ADMIN/COACH)
+      summary: Delete a plan, cascading to its meals (self, ADMIN, or a COACH assigned to that member)
       responses:
         "204": { description: Deleted. }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -1168,7 +1168,7 @@ paths:
   /v1/grocery-plans:
     get:
       tags: [grocery-plans]
-      summary: List grocery plans (own, or another member's via userId if ADMIN/COACH)
+      summary: List grocery plans (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: userId
           in: query
@@ -1197,7 +1197,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [grocery-plans]
-      summary: Create a grocery plan with nested items (own, or another member's via userId if ADMIN/COACH)
+      summary: Create a grocery plan with nested items (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       description: totalEstimatedCostUsd is computed server-side as the sum of each item's unitPriceUsd.
       requestBody:
         required: true
@@ -1240,7 +1240,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       tags: [grocery-plans]
-      summary: Get a plan with its items (self, or ADMIN/COACH)
+      summary: Get a plan with its items (self, ADMIN, or a COACH assigned to that member)
       responses:
         "200":
           description: The plan.
@@ -1254,7 +1254,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [grocery-plans]
-      summary: Delete a plan, cascading to its items (self, or ADMIN/COACH)
+      summary: Delete a plan, cascading to its items (self, ADMIN, or a COACH assigned to that member)
       responses:
         "204": { description: Deleted. }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -1268,7 +1268,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       tags: [profile-extensions]
-      summary: Get a member's app preferences (self, or ADMIN/COACH)
+      summary: Get a member's app preferences (self, ADMIN, or a COACH assigned to that member)
       responses:
         "200":
           description: The member's preferences (null if never set).
@@ -1316,7 +1316,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       tags: [profile-extensions]
-      summary: Get a member's health/nutrition targets (self, or ADMIN/COACH)
+      summary: Get a member's health/nutrition targets (self, ADMIN, or a COACH assigned to that member)
       responses:
         "200":
           description: The member's health profile (null if never set).
@@ -1363,7 +1363,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       tags: [profile-extensions]
-      summary: List a member's allergies (self, or ADMIN/COACH)
+      summary: List a member's allergies (self, ADMIN, or a COACH assigned to that member)
       responses:
         "200":
           description: The member's allergies.
@@ -1490,7 +1490,7 @@ paths:
   /v1/badges:
     get:
       tags: [gamification]
-      summary: List badges (own, or another member's via userId if ADMIN/COACH)
+      summary: List badges (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: userId
           in: query
@@ -1538,7 +1538,7 @@ paths:
   /v1/achievements:
     get:
       tags: [gamification]
-      summary: List achievements (own, or another member's via userId if ADMIN/COACH)
+      summary: List achievements (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: userId
           in: query
@@ -1618,7 +1618,7 @@ paths:
   /v1/wearable-summaries:
     get:
       tags: [wearables]
-      summary: List daily wearable summaries (own, or another member's via userId if ADMIN/COACH)
+      summary: List daily wearable summaries (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
       parameters:
         - name: userId
           in: query

@@ -59,8 +59,9 @@ describe("goal routes", () => {
       expect(prismaMock.goal.findMany).not.toHaveBeenCalled();
     });
 
-    it("lets a COACH list a specific member's goals", async () => {
+    it("lets a COACH list the goals of a client they're actively assigned to", async () => {
       mockAuthedUser("coach-1", ["COACH"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce({ relationshipStatus: "active" });
       prismaMock.goal.findMany.mockResolvedValueOnce([]);
       prismaMock.goal.count.mockResolvedValueOnce(0);
 
@@ -70,6 +71,18 @@ describe("goal routes", () => {
 
       expect(res.status).toBe(200);
       expect(prismaMock.goal.findMany.mock.calls[0][0].where.userId).toBe(OTHER_ID);
+    });
+
+    it("forbids a COACH with no active assignment to that member", async () => {
+      mockAuthedUser("coach-1", ["COACH"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .get(`/v1/goals?userId=${OTHER_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("coach-1")}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.goal.findMany).not.toHaveBeenCalled();
     });
   });
 

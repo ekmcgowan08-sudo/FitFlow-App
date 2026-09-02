@@ -2,11 +2,12 @@
 // (WorkoutPlan -> WorkoutPlanSession -> WorkoutPlanSessionExercise —
 // distinct from the WorkoutSession log a member actually completes, see
 // docs/architecture/canonical-schema-decisions.md). Scoped to the owning
-// member, or ADMIN/COACH. `authenticate` runs once, centrally, in
+// member, ADMIN, or a COACH with an active CoachAssignment to that member
+// (see src/rbac/member-scope.ts). `authenticate` runs once, centrally, in
 // app.ts's protected sub-router.
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, hasRole } from '../auth/types';
+import { AuthenticatedRequest } from '../auth/types';
 import { validate } from '../middleware/validate';
 import {
   createWorkoutPlanSchema,
@@ -17,14 +18,11 @@ import {
   type UpdateWorkoutPlanInput,
 } from '../validation/workout-plan.schema';
 import { prisma } from '../lib/prisma-client';
+import { canAccessMemberRecord } from '../rbac/member-scope';
 import { ForbiddenError, NotFoundError } from '../lib/errors';
 import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
-
-function isElevated(req: AuthenticatedRequest): boolean {
-  return hasRole(req.user, 'ADMIN', 'COACH');
-}
 
 router.get(
   '/workout-plans',
@@ -34,10 +32,10 @@ router.get(
       const authedReq = req as AuthenticatedRequest;
       const { userId, page, pageSize } = req.validated!.query as { userId?: string; page: number; pageSize: number };
 
-      if (userId && userId !== authedReq.user.id && !isElevated(authedReq)) {
+      const targetUserId = userId ?? authedReq.user.id;
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, targetUserId))) {
         throw new ForbiddenError('You may only list your own workout plans.');
       }
-      const targetUserId = isElevated(authedReq) && userId ? userId : authedReq.user.id;
 
       const where = { userId: targetUserId };
       const [plans, total] = await Promise.all([
@@ -69,7 +67,7 @@ router.get(
         },
       });
       if (!plan) throw new NotFoundError('Workout plan not found.');
-      if (plan.userId !== authedReq.user.id && !isElevated(authedReq)) {
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, plan.userId))) {
         throw new NotFoundError('Workout plan not found.');
       }
 
@@ -85,7 +83,7 @@ router.post('/workout-plans', validate({ body: createWorkoutPlanSchema }), async
     const authedReq = req as AuthenticatedRequest;
     const input = req.validated!.body as CreateWorkoutPlanInput;
 
-    if (input.userId !== authedReq.user.id && !isElevated(authedReq)) {
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, input.userId))) {
       throw new ForbiddenError('You may only create workout plans for yourself.');
     }
 
@@ -133,7 +131,7 @@ router.patch(
 
       const existing = await prisma.workoutPlan.findUnique({ where: { id }, select: { userId: true } });
       if (!existing) throw new NotFoundError('Workout plan not found.');
-      if (existing.userId !== authedReq.user.id && !isElevated(authedReq)) {
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, existing.userId))) {
         throw new NotFoundError('Workout plan not found.');
       }
 
@@ -155,7 +153,7 @@ router.delete(
 
       const existing = await prisma.workoutPlan.findUnique({ where: { id }, select: { userId: true } });
       if (!existing) throw new NotFoundError('Workout plan not found.');
-      if (existing.userId !== authedReq.user.id && !isElevated(authedReq)) {
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, existing.userId))) {
         throw new NotFoundError('Workout plan not found.');
       }
 

@@ -1,9 +1,11 @@
-// Goal routes: a member's own health/fitness goals, plus ADMIN/COACH
-// access to any member's goals. `authenticate` runs once, centrally, in
-// app.ts's protected sub-router.
+// Goal routes: a member's own health/fitness goals, plus ADMIN access to
+// any member's goals and COACH access to the goals of members they have
+// an active CoachAssignment with (see src/rbac/member-scope.ts —
+// a COACH role alone is never enough). `authenticate` runs once,
+// centrally, in app.ts's protected sub-router.
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, hasRole } from '../auth/types';
+import { AuthenticatedRequest } from '../auth/types';
 import { validate } from '../middleware/validate';
 import {
   createGoalSchema,
@@ -14,14 +16,11 @@ import {
   type UpdateGoalInput,
 } from '../validation/goal.schema';
 import { prisma } from '../lib/prisma-client';
+import { canAccessMemberRecord } from '../rbac/member-scope';
 import { ForbiddenError, NotFoundError } from '../lib/errors';
 import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
-
-function isElevated(req: AuthenticatedRequest): boolean {
-  return hasRole(req.user, 'ADMIN', 'COACH');
-}
 
 router.get('/goals', validate({ query: listGoalsQuerySchema }), async (req, res: Response, next) => {
   try {
@@ -34,10 +33,10 @@ router.get('/goals', validate({ query: listGoalsQuerySchema }), async (req, res:
       pageSize: number;
     };
 
-    if (userId && userId !== authedReq.user.id && !isElevated(authedReq)) {
+    const targetUserId = userId ?? authedReq.user.id;
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, targetUserId))) {
       throw new ForbiddenError('You may only list your own goals.');
     }
-    const targetUserId = isElevated(authedReq) && userId ? userId : authedReq.user.id;
 
     const where = { userId: targetUserId, ...(category ? { category: category as never } : {}), ...(status ? { status: status as never } : {}) };
     const [goals, total] = await Promise.all([
@@ -63,7 +62,7 @@ router.get('/goals/:id', validate({ params: goalIdParamsSchema }), async (req, r
 
     const goal = await prisma.goal.findUnique({ where: { id } });
     if (!goal) throw new NotFoundError('Goal not found.');
-    if (goal.userId !== authedReq.user.id && !isElevated(authedReq)) {
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, goal.userId))) {
       // A 404, not a 403: a goal id that exists but belongs to someone
       // else should not confirm its existence to a caller with no
       // relationship to it (see requireCoachOfClient's stricter check for
@@ -83,9 +82,9 @@ router.post('/goals', validate({ body: createGoalSchema }), async (req, res: Res
     const input = req.validated!.body as CreateGoalInput;
 
     // `userId` in the body is never trusted for whose goal this becomes
-    // unless the caller holds an elevated role — same rule as workout-log
-    // creation (see workout-log.routes.ts).
-    if (input.userId !== authedReq.user.id && !isElevated(authedReq)) {
+    // unless the caller is authorized for that member — same rule as
+    // workout-log creation (see workout-log.routes.ts).
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, input.userId))) {
       throw new ForbiddenError('You may only create goals for yourself.');
     }
 
@@ -117,7 +116,7 @@ router.patch(
 
       const existing = await prisma.goal.findUnique({ where: { id }, select: { userId: true } });
       if (!existing) throw new NotFoundError('Goal not found.');
-      if (existing.userId !== authedReq.user.id && !isElevated(authedReq)) {
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, existing.userId))) {
         throw new NotFoundError('Goal not found.');
       }
 
@@ -147,7 +146,7 @@ router.delete('/goals/:id', validate({ params: goalIdParamsSchema }), async (req
 
     const existing = await prisma.goal.findUnique({ where: { id }, select: { userId: true } });
     if (!existing) throw new NotFoundError('Goal not found.');
-    if (existing.userId !== authedReq.user.id && !isElevated(authedReq)) {
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, existing.userId))) {
       throw new NotFoundError('Goal not found.');
     }
 

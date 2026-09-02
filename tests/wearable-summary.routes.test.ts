@@ -93,8 +93,9 @@ describe("wearable-summary routes", () => {
       expect(prismaMock.wearableDailySummary.findMany.mock.calls[0][0].where.userId).toBe(USER_ID);
     });
 
-    it("lets a COACH read (but not write) a client's summaries", async () => {
+    it("lets a COACH read (but not write) an actively-assigned client's summaries", async () => {
       mockAuthedUser("coach-1", ["COACH"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce({ relationshipStatus: "active" });
       prismaMock.wearableDailySummary.findMany.mockResolvedValueOnce([]);
       prismaMock.wearableDailySummary.count.mockResolvedValueOnce(0);
 
@@ -103,6 +104,18 @@ describe("wearable-summary routes", () => {
         .set("Authorization", `Bearer ${tokenFor("coach-1")}`);
 
       expect(res.status).toBe(200);
+    });
+
+    it("forbids a COACH with no active assignment from reading a member's summaries", async () => {
+      mockAuthedUser("coach-1", ["COACH"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .get(`/v1/wearable-summaries?userId=${OTHER_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("coach-1")}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.wearableDailySummary.findMany).not.toHaveBeenCalled();
     });
 
     it("rejects from after to", async () => {

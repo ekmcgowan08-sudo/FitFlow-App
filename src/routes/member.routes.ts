@@ -27,16 +27,21 @@ import {
 } from '../validation/member-profile.schema';
 import { MemberRepository } from '../repositories/member.repository';
 import { prisma } from '../lib/prisma-client';
-import { NotFoundError } from '../lib/errors';
+import { canAccessMemberRecord } from '../rbac/member-scope';
+import { ForbiddenError, NotFoundError } from '../lib/errors';
 
 const router = Router();
 const memberRepository = new MemberRepository(prisma);
 
-// GET /v1/members — admin/coach only: a plain member has no legitimate
-// reason to enumerate every other member's profile.
+// GET /v1/members — ADMIN only: enumerating the entire member directory
+// isn't a coach's workflow (a coach's client roster is
+// GET /v1/coach/clients, scoped to their own active CoachAssignments —
+// see coach-assignment.routes.ts), so this stays narrower than "any
+// elevated role" to avoid letting a COACH browse every member platform-
+// wide.
 router.get(
   '/members',
-  requireRole('ADMIN', 'COACH'),
+  requireRole('ADMIN'),
   validate({ query: listMembersQuerySchema }),
   async (req, res: Response, next) => {
     try {
@@ -53,14 +58,19 @@ router.get(
   },
 );
 
-// GET /v1/members/:id — self, or ADMIN/COACH.
+// GET /v1/members/:id — self, ADMIN, or a COACH with an active
+// CoachAssignment to that member (see src/rbac/member-scope.ts).
 router.get(
   '/members/:id',
-  requireSelfOrRole('id', 'ADMIN', 'COACH'),
   validate({ params: memberIdParamsSchema }),
   async (req, res: Response, next) => {
     try {
+      const authedReq = req as AuthenticatedRequest;
       const { id } = req.validated!.params as { id: string };
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, id))) {
+        throw new ForbiddenError('You may not view this member’s profile.');
+      }
+
       const member = await memberRepository.findWithProfileAndGoals(id);
       if (!member) throw new NotFoundError('Member not found.');
       res.json({ member });

@@ -56,8 +56,9 @@ describe("streak routes", () => {
     expect(prismaMock.streak.findMany).not.toHaveBeenCalled();
   });
 
-  it("lets a COACH request a specific member's streaks", async () => {
+  it("lets a COACH request the streaks of a client they're actively assigned to", async () => {
     mockAuthedUser("coach-1", ["COACH"]);
+    prismaMock.coachAssignment.findUnique.mockResolvedValueOnce({ relationshipStatus: "active" });
     prismaMock.streak.findMany.mockResolvedValueOnce([]);
 
     const res = await request(app)
@@ -66,6 +67,18 @@ describe("streak routes", () => {
 
     expect(res.status).toBe(200);
     expect(prismaMock.streak.findMany).toHaveBeenCalledWith({ where: { userId: OTHER_ID } });
+  });
+
+  it("forbids a COACH with no active assignment to that member", async () => {
+    mockAuthedUser("coach-1", ["COACH"]);
+    prismaMock.coachAssignment.findUnique.mockResolvedValueOnce(null);
+
+    const res = await request(app)
+      .get(`/v1/streaks?userId=${OTHER_ID}`)
+      .set("Authorization", `Bearer ${tokenFor("coach-1")}`);
+
+    expect(res.status).toBe(403);
+    expect(prismaMock.streak.findMany).not.toHaveBeenCalled();
   });
 
   it("rejects a non-UUID userId query param", async () => {

@@ -1,7 +1,8 @@
 // Wearable-daily-summary routes: a member's phone/watch app syncs one
 // row per day. Writes are self or ADMIN only (a coach doesn't sync
-// someone else's wearable); reads are self or ADMIN/COACH. `authenticate`
-// runs once, centrally, in app.ts's protected sub-router.
+// someone else's wearable); reads are self, ADMIN, or a COACH with an
+// active CoachAssignment to that member (see src/rbac/member-scope.ts).
+// `authenticate` runs once, centrally, in app.ts's protected sub-router.
 
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, hasRole } from '../auth/types';
@@ -12,14 +13,11 @@ import {
   type UpsertWearableSummaryInput,
 } from '../validation/wearable-summary.schema';
 import { prisma } from '../lib/prisma-client';
+import { canAccessMemberRecord } from '../rbac/member-scope';
 import { ForbiddenError } from '../lib/errors';
 import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
-
-function canRead(req: AuthenticatedRequest, targetUserId: string): boolean {
-  return req.user.id === targetUserId || hasRole(req.user, 'ADMIN', 'COACH');
-}
 
 function canWrite(req: AuthenticatedRequest, targetUserId: string): boolean {
   return req.user.id === targetUserId || hasRole(req.user, 'ADMIN');
@@ -40,7 +38,7 @@ router.get(
       };
 
       const targetUserId = userId ?? authedReq.user.id;
-      if (!canRead(authedReq, targetUserId)) {
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, targetUserId))) {
         throw new ForbiddenError('You may only view your own wearable summaries.');
       }
 

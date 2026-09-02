@@ -1,9 +1,10 @@
 // Meal-plan routes: coach/AI-authored weekly meal plans. Scoped to the
-// owning member, or ADMIN/COACH. `authenticate` runs once, centrally, in
-// app.ts's protected sub-router.
+// owning member, ADMIN, or a COACH with an active CoachAssignment to that
+// member (see src/rbac/member-scope.ts). `authenticate` runs once,
+// centrally, in app.ts's protected sub-router.
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, hasRole } from '../auth/types';
+import { AuthenticatedRequest } from '../auth/types';
 import { validate } from '../middleware/validate';
 import {
   createMealPlanSchema,
@@ -12,24 +13,21 @@ import {
   type CreateMealPlanInput,
 } from '../validation/meal-plan.schema';
 import { prisma } from '../lib/prisma-client';
+import { canAccessMemberRecord } from '../rbac/member-scope';
 import { ForbiddenError, NotFoundError } from '../lib/errors';
 import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
-
-function isElevated(req: AuthenticatedRequest): boolean {
-  return hasRole(req.user, 'ADMIN', 'COACH');
-}
 
 router.get('/meal-plans', validate({ query: listMealPlansQuerySchema }), async (req, res: Response, next) => {
   try {
     const authedReq = req as AuthenticatedRequest;
     const { userId, page, pageSize } = req.validated!.query as { userId?: string; page: number; pageSize: number };
 
-    if (userId && userId !== authedReq.user.id && !isElevated(authedReq)) {
+    const targetUserId = userId ?? authedReq.user.id;
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, targetUserId))) {
       throw new ForbiddenError('You may only list your own meal plans.');
     }
-    const targetUserId = isElevated(authedReq) && userId ? userId : authedReq.user.id;
 
     const where = { userId: targetUserId };
     const [plans, total] = await Promise.all([
@@ -50,7 +48,7 @@ router.get('/meal-plans/:id', validate({ params: mealPlanIdParamsSchema }), asyn
 
     const plan = await prisma.mealPlan.findUnique({ where: { id }, include: { meals: true } });
     if (!plan) throw new NotFoundError('Meal plan not found.');
-    if (plan.userId !== authedReq.user.id && !isElevated(authedReq)) {
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, plan.userId))) {
       throw new NotFoundError('Meal plan not found.');
     }
 
@@ -65,7 +63,7 @@ router.post('/meal-plans', validate({ body: createMealPlanSchema }), async (req,
     const authedReq = req as AuthenticatedRequest;
     const input = req.validated!.body as CreateMealPlanInput;
 
-    if (input.userId !== authedReq.user.id && !isElevated(authedReq)) {
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, input.userId))) {
       throw new ForbiddenError('You may only create meal plans for yourself.');
     }
 
@@ -93,7 +91,7 @@ router.delete('/meal-plans/:id', validate({ params: mealPlanIdParamsSchema }), a
 
     const existing = await prisma.mealPlan.findUnique({ where: { id }, select: { userId: true } });
     if (!existing) throw new NotFoundError('Meal plan not found.');
-    if (existing.userId !== authedReq.user.id && !isElevated(authedReq)) {
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, existing.userId))) {
       throw new NotFoundError('Meal plan not found.');
     }
 

@@ -83,8 +83,9 @@ describe("gamification routes", () => {
   });
 
   describe("GET /v1/achievements", () => {
-    it("lets a COACH view a client's achievements", async () => {
+    it("lets a COACH view an actively-assigned client's achievements", async () => {
       mockAuthedUser("coach-1", ["COACH"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce({ relationshipStatus: "active" });
       prismaMock.achievement.findMany.mockResolvedValueOnce([]);
 
       const res = await request(app)
@@ -93,6 +94,18 @@ describe("gamification routes", () => {
 
       expect(res.status).toBe(200);
       expect(prismaMock.achievement.findMany.mock.calls[0][0].where.userId).toBe(OTHER_ID);
+    });
+
+    it("forbids a COACH with no active assignment from viewing a member's achievements", async () => {
+      mockAuthedUser("coach-1", ["COACH"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .get(`/v1/achievements?userId=${OTHER_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("coach-1")}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.achievement.findMany).not.toHaveBeenCalled();
     });
   });
 

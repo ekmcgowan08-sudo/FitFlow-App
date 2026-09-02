@@ -20,7 +20,7 @@
 // not also be run per-router here.
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, hasRole } from '../auth/types';
+import { AuthenticatedRequest } from '../auth/types';
 import { validate } from '../middleware/validate';
 import {
   createWorkoutLogSchema,
@@ -31,6 +31,7 @@ import {
 import { WorkoutLogRepository } from '../repositories/workout-log.repository';
 import { MemberRepository } from '../repositories/member.repository';
 import { prisma } from '../lib/prisma-client';
+import { canAccessMemberRecord } from '../rbac/member-scope';
 import { ForbiddenError } from '../lib/errors';
 
 const router = Router();
@@ -49,13 +50,13 @@ router.get('/workout-logs', validate({ query: listWorkoutLogsQuerySchema }), asy
       pageSize: number;
     };
 
-    // A plain user may only ever list their own logs. Only ADMIN/COACH may
-    // request another member's logs via `memberId`.
-    const isElevated = hasRole(authedReq.user, 'ADMIN', 'COACH');
-    if (memberId && memberId !== authedReq.user.id && !isElevated) {
+    // A plain user may only ever list their own logs. Only ADMIN, or a
+    // COACH with an active CoachAssignment to that member, may request
+    // another member's logs via `memberId` (see src/rbac/member-scope.ts).
+    const targetUserId = memberId ?? authedReq.user.id;
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, targetUserId))) {
       throw new ForbiddenError('You may only list your own workout logs.');
     }
-    const targetUserId = isElevated && memberId ? memberId : authedReq.user.id;
 
     const result = await workoutLogRepository.listForUser(targetUserId, {
       category: category ? toExerciseCategory(category) : undefined,
@@ -77,10 +78,10 @@ router.post('/workout-logs', validate({ body: createWorkoutLogSchema }), async (
     const input = req.validated!.body as CreateWorkoutLogInput;
 
     // `memberId` in the body is never trusted for whose log this becomes
-    // unless the caller holds an elevated role — otherwise any user could
+    // unless the caller is authorized for that member — otherwise any
+    // user (or any coach with no real relationship to this member) could
     // write workout data into someone else's history.
-    const isElevated = hasRole(authedReq.user, 'ADMIN', 'COACH');
-    if (input.memberId !== authedReq.user.id && !isElevated) {
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, input.memberId))) {
       throw new ForbiddenError('You may only log workouts for yourself.');
     }
 

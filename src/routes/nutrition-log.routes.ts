@@ -1,10 +1,11 @@
-// Nutrition-log routes: a member's own food/drink log, plus ADMIN/COACH
-// access to any member's log. Same ownership pattern as goals and
-// workout-logs. `authenticate` runs once, centrally, in app.ts's
-// protected sub-router.
+// Nutrition-log routes: a member's own food/drink log, plus ADMIN access
+// to any member's log and COACH access to the logs of members they have
+// an active CoachAssignment with (see src/rbac/member-scope.ts). Same
+// ownership pattern as goals and workout-logs. `authenticate` runs once,
+// centrally, in app.ts's protected sub-router.
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, hasRole } from '../auth/types';
+import { AuthenticatedRequest } from '../auth/types';
 import { validate } from '../middleware/validate';
 import {
   createNutritionLogSchema,
@@ -15,14 +16,11 @@ import {
   type UpdateNutritionLogInput,
 } from '../validation/nutrition-log.schema';
 import { prisma } from '../lib/prisma-client';
+import { canAccessMemberRecord } from '../rbac/member-scope';
 import { ForbiddenError, NotFoundError } from '../lib/errors';
 import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
-
-function isElevated(req: AuthenticatedRequest): boolean {
-  return hasRole(req.user, 'ADMIN', 'COACH');
-}
 
 router.get(
   '/nutrition-logs',
@@ -39,10 +37,10 @@ router.get(
         pageSize: number;
       };
 
-      if (userId && userId !== authedReq.user.id && !isElevated(authedReq)) {
+      const targetUserId = userId ?? authedReq.user.id;
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, targetUserId))) {
         throw new ForbiddenError('You may only list your own nutrition logs.');
       }
-      const targetUserId = isElevated(authedReq) && userId ? userId : authedReq.user.id;
 
       const where = {
         userId: targetUserId,
@@ -74,7 +72,7 @@ router.post('/nutrition-logs', validate({ body: createNutritionLogSchema }), asy
     const authedReq = req as AuthenticatedRequest;
     const input = req.validated!.body as CreateNutritionLogInput;
 
-    if (input.userId !== authedReq.user.id && !isElevated(authedReq)) {
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, input.userId))) {
       throw new ForbiddenError('You may only log nutrition entries for yourself.');
     }
 
@@ -110,7 +108,7 @@ router.patch(
 
       const existing = await prisma.nutritionLog.findUnique({ where: { id }, select: { userId: true } });
       if (!existing) throw new NotFoundError('Nutrition log not found.');
-      if (existing.userId !== authedReq.user.id && !isElevated(authedReq)) {
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, existing.userId))) {
         throw new NotFoundError('Nutrition log not found.');
       }
 
@@ -146,7 +144,7 @@ router.delete(
 
       const existing = await prisma.nutritionLog.findUnique({ where: { id }, select: { userId: true } });
       if (!existing) throw new NotFoundError('Nutrition log not found.');
-      if (existing.userId !== authedReq.user.id && !isElevated(authedReq)) {
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, existing.userId))) {
         throw new NotFoundError('Nutrition log not found.');
       }
 

@@ -1,12 +1,13 @@
 // Gamification routes: badges and achievements are system-awarded, never
-// client-authored — reads are self or ADMIN/COACH, writes are ADMIN
-// only (an internal gamification job would call these with admin
-// credentials; there is deliberately no path for a user to award
+// client-authored — reads are self, ADMIN, or a COACH with an active
+// CoachAssignment to that member (see src/rbac/member-scope.ts); writes
+// are ADMIN only (an internal gamification job would call these with
+// admin credentials; there is deliberately no path for a user to award
 // themselves a badge). `authenticate` runs once, centrally, in app.ts's
 // protected sub-router.
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, hasRole } from '../auth/types';
+import { AuthenticatedRequest } from '../auth/types';
 import { validate } from '../middleware/validate';
 import { requireRole } from '../rbac/rbac.middleware';
 import {
@@ -20,29 +21,23 @@ import {
   type UpdateAchievementInput,
 } from '../validation/gamification.schema';
 import { prisma } from '../lib/prisma-client';
+import { canAccessMemberRecord } from '../rbac/member-scope';
 import { ForbiddenError, NotFoundError } from '../lib/errors';
 import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
 
-function isElevated(req: AuthenticatedRequest): boolean {
-  return hasRole(req.user, 'ADMIN', 'COACH');
-}
-
-function resolveTargetUserId(req: AuthenticatedRequest, userId?: string): string {
-  return isElevated(req) && userId ? userId : req.user.id;
-}
-
 router.get('/badges', validate({ query: listGamificationQuerySchema }), async (req, res: Response, next) => {
   try {
     const authedReq = req as AuthenticatedRequest;
     const { userId } = req.validated!.query as { userId?: string };
-    if (userId && userId !== authedReq.user.id && !isElevated(authedReq)) {
+    const targetUserId = userId ?? authedReq.user.id;
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, targetUserId))) {
       throw new ForbiddenError('You may only view your own badges.');
     }
 
     const badges = await prisma.badge.findMany({
-      where: { userId: resolveTargetUserId(authedReq, userId) },
+      where: { userId: targetUserId },
       orderBy: { unlockedAt: 'desc' },
     });
     res.json({ badges });
@@ -76,12 +71,13 @@ router.get('/achievements', validate({ query: listGamificationQuerySchema }), as
   try {
     const authedReq = req as AuthenticatedRequest;
     const { userId } = req.validated!.query as { userId?: string };
-    if (userId && userId !== authedReq.user.id && !isElevated(authedReq)) {
+    const targetUserId = userId ?? authedReq.user.id;
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, targetUserId))) {
       throw new ForbiddenError('You may only view your own achievements.');
     }
 
     const achievements = await prisma.achievement.findMany({
-      where: { userId: resolveTargetUserId(authedReq, userId) },
+      where: { userId: targetUserId },
     });
     res.json({ achievements });
   } catch (err) {

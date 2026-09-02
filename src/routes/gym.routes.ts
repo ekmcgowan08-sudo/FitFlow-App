@@ -1,10 +1,11 @@
 // Gym and gym-check-in routes. Gyms are a shared catalog (any
 // authenticated user may browse it; only ADMIN may add to it).
-// Check-ins are scoped to self, or ADMIN/COACH for another member.
+// Check-ins are scoped to self, ADMIN, or a COACH with an active
+// CoachAssignment to that member (see src/rbac/member-scope.ts).
 // `authenticate` runs once, centrally, in app.ts's protected sub-router.
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, hasRole } from '../auth/types';
+import { AuthenticatedRequest } from '../auth/types';
 import { validate } from '../middleware/validate';
 import { requireRole } from '../rbac/rbac.middleware';
 import { MemberRepository } from '../repositories/member.repository';
@@ -17,6 +18,7 @@ import {
   type CreateGymCheckInInput,
 } from '../validation/gym.schema';
 import { prisma } from '../lib/prisma-client';
+import { canAccessMemberRecord } from '../rbac/member-scope';
 import { ForbiddenError } from '../lib/errors';
 import { translatePrismaError } from '../lib/domain-errors';
 
@@ -61,11 +63,10 @@ router.get(
       const authedReq = req as AuthenticatedRequest;
       const { userId, page, pageSize } = req.validated!.query as { userId?: string; page: number; pageSize: number };
 
-      const isElevated = hasRole(authedReq.user, 'ADMIN', 'COACH');
-      if (userId && userId !== authedReq.user.id && !isElevated) {
+      const targetUserId = userId ?? authedReq.user.id;
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, targetUserId))) {
         throw new ForbiddenError('You may only list your own gym check-ins.');
       }
-      const targetUserId = isElevated && userId ? userId : authedReq.user.id;
 
       const where = { userId: targetUserId };
       const [checkIns, total] = await Promise.all([
@@ -91,8 +92,7 @@ router.post('/gym-checkins', validate({ body: createGymCheckInSchema }), async (
     const authedReq = req as AuthenticatedRequest;
     const input = req.validated!.body as CreateGymCheckInInput;
 
-    const isElevated = hasRole(authedReq.user, 'ADMIN', 'COACH');
-    if (input.userId !== authedReq.user.id && !isElevated) {
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, input.userId))) {
       throw new ForbiddenError('You may only check yourself in.');
     }
 
