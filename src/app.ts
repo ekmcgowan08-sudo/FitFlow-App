@@ -23,7 +23,6 @@ import profileExtensionsRoutes from './routes/profile-extensions.routes';
 import gamificationRoutes from './routes/gamification.routes';
 import wearableSummaryRoutes from './routes/wearable-summary.routes';
 import coachProfileRoutes from './routes/coach-profile.routes';
-import rbacExampleRoutes from './routes/rbac-examples.routes';
 import { errorHandler } from './lib/errors';
 
 registerFitFlowErrorMap();
@@ -67,7 +66,6 @@ export function createApp(): Express {
   protectedRoutes.use(gamificationRoutes);
   protectedRoutes.use(wearableSummaryRoutes);
   protectedRoutes.use(coachProfileRoutes);
-  protectedRoutes.use(rbacExampleRoutes);
   app.use('/v1', protectedRoutes);
 
   // Central error handler — must be registered last.
