@@ -5,7 +5,6 @@
  */
 import type { Prisma, PrismaClient, User } from '@prisma/client';
 import { BaseRepository } from './base.repository';
-import { translatePrismaError } from '../lib/domain-errors';
 
 export type MemberWithProfile = Omit<User, 'passwordHash'> & {
   profile: Prisma.UserProfileGetPayload<Record<string, never>> | null;
@@ -39,36 +38,6 @@ export class MemberRepository extends BaseRepository<
         goals: { where: { status: 'active' } },
       },
     }) as Promise<MemberWithProfile | null>;
-  }
-
-  async findActiveClientsForTrainer(trainerUserId: string): Promise<Omit<User, 'passwordHash'>[]> {
-    return this.client.user.findMany({
-      where: {
-        coachAssignments: {
-          some: { coachUserId: trainerUserId, relationshipStatus: 'active' },
-        },
-      },
-      omit: { passwordHash: true },
-    });
-  }
-
-  async createWithProfile(input: {
-    user: Prisma.UserCreateInput;
-    profile: Omit<Prisma.UserProfileCreateInput, 'user'>;
-  }): Promise<MemberWithProfile> {
-    try {
-      const user = await this.client.user.create({
-        data: {
-          ...input.user,
-          profile: { create: input.profile },
-        },
-        omit: { passwordHash: true },
-        include: { profile: true, goals: true },
-      });
-      return user as MemberWithProfile;
-    } catch (err) {
-      throw translatePrismaError(err);
-    }
   }
 
   /**

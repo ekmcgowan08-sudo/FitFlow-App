@@ -119,6 +119,29 @@ describe("profile-extensions routes", () => {
   });
 
   describe("health profile", () => {
+    it("lets the caller read their own health profile", async () => {
+      mockAuthedUser(USER_ID);
+      prismaMock.userHealthProfile.findUnique.mockResolvedValueOnce({ userId: USER_ID, calorieTarget: 2200 });
+
+      const res = await request(app)
+        .get(`/v1/members/${USER_ID}/health-profile`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.healthProfile.calorieTarget).toBe(2200);
+    });
+
+    it("forbids a plain user from reading another member's health profile", async () => {
+      mockAuthedUser(USER_ID, ["USER"]);
+
+      const res = await request(app)
+        .get(`/v1/members/${OTHER_ID}/health-profile`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.userHealthProfile.findUnique).not.toHaveBeenCalled();
+    });
+
     it("forbids a plain user from writing another member's health profile", async () => {
       mockAuthedUser(USER_ID, ["USER"]);
 
@@ -145,6 +168,29 @@ describe("profile-extensions routes", () => {
   });
 
   describe("allergies", () => {
+    it("lets the caller read their own allergies", async () => {
+      mockAuthedUser(USER_ID);
+      prismaMock.userAllergy.findMany.mockResolvedValueOnce([{ id: ALLERGY_ID, userId: USER_ID, allergyName: "peanuts" }]);
+
+      const res = await request(app)
+        .get(`/v1/members/${USER_ID}/allergies`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.allergies).toHaveLength(1);
+    });
+
+    it("forbids a plain user from reading another member's allergies", async () => {
+      mockAuthedUser(USER_ID, ["USER"]);
+
+      const res = await request(app)
+        .get(`/v1/members/${OTHER_ID}/allergies`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.userAllergy.findMany).not.toHaveBeenCalled();
+    });
+
     it("lets the caller add their own allergy", async () => {
       mockAuthedUser(USER_ID);
       prismaMock.userAllergy.create.mockResolvedValueOnce({ id: ALLERGY_ID, userId: USER_ID, allergyName: "peanuts" });
@@ -209,6 +255,29 @@ describe("profile-extensions routes", () => {
         .send({ noteText: "Prior ACL surgery, 2023." });
 
       expect(res.status).toBe(201);
+    });
+
+    it("forbids adding a medical note for someone else without an elevated role", async () => {
+      mockAuthedUser(USER_ID, ["USER"]);
+
+      const res = await request(app)
+        .post(`/v1/members/${OTHER_ID}/medical-notes`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`)
+        .send({ noteText: "Not yours" });
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.userMedicalNote.create).not.toHaveBeenCalled();
+    });
+
+    it("forbids removing a medical note for someone else without an elevated role", async () => {
+      mockAuthedUser(USER_ID, ["USER"]);
+
+      const res = await request(app)
+        .delete(`/v1/members/${OTHER_ID}/medical-notes/${ALLERGY_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.userMedicalNote.findUnique).not.toHaveBeenCalled();
     });
 
     it("forbids a COACH from reading a client's medical notes (unlike allergies)", async () => {

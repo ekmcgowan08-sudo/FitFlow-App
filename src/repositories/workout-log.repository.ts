@@ -5,7 +5,7 @@
  */
 import type { Prisma, PrismaClient, WorkoutSession, WorkoutSet } from '@prisma/client';
 import { ExerciseCategory } from '@prisma/client';
-import { BaseRepository, type Page } from './base.repository';
+import { BaseRepository } from './base.repository';
 import { translatePrismaError } from '../lib/domain-errors';
 
 export interface AdHocWorkoutLogInput {
@@ -33,17 +33,6 @@ export class WorkoutLogRepository extends BaseRepository<
   // constructed from inside a caller's existing transaction.
   constructor(private readonly client: PrismaClient) {
     super(client.workoutSession);
-  }
-
-  async findRecentForMember(userId: string, page: { take?: number; cursor?: string } = {}): Promise<Page<WorkoutSession>> {
-    return this.findPage(
-      {
-        where: { userId },
-        orderBy: { startedAt: 'desc' },
-        include: { sessionExercises: { include: { sets: true } } },
-      },
-      page,
-    );
   }
 
   /**

@@ -91,6 +91,35 @@ describe("grocery-plan routes", () => {
     });
   });
 
+  describe("GET /v1/grocery-plans/:id", () => {
+    it("returns the plan with its items when owned by the caller", async () => {
+      mockAuthedUser(USER_ID);
+      prismaMock.groceryPlan.findUnique.mockResolvedValueOnce({
+        id: PLAN_ID,
+        userId: USER_ID,
+        items: [{ id: "item-1", itemName: "Rice" }],
+      });
+
+      const res = await request(app)
+        .get(`/v1/grocery-plans/${PLAN_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.plan.items).toHaveLength(1);
+    });
+
+    it("returns 404 (not 403) for a plan owned by someone else", async () => {
+      mockAuthedUser(USER_ID);
+      prismaMock.groceryPlan.findUnique.mockResolvedValueOnce({ id: PLAN_ID, userId: OTHER_ID });
+
+      const res = await request(app)
+        .get(`/v1/grocery-plans/${PLAN_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(404);
+    });
+  });
+
   describe("DELETE /v1/grocery-plans/:id", () => {
     it("deletes the caller's own plan", async () => {
       mockAuthedUser(USER_ID);

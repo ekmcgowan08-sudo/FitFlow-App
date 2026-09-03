@@ -132,6 +132,35 @@ describe("workout-plan routes", () => {
     });
   });
 
+  describe("PATCH /v1/workout-plans/:id", () => {
+    it("renames the caller's own plan", async () => {
+      mockAuthedUser(USER_ID);
+      prismaMock.workoutPlan.findUnique.mockResolvedValueOnce({ userId: USER_ID });
+      prismaMock.workoutPlan.update.mockResolvedValueOnce({ id: PLAN_ID, title: "New Name" });
+
+      const res = await request(app)
+        .patch(`/v1/workout-plans/${PLAN_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`)
+        .send({ title: "New Name" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.plan.title).toBe("New Name");
+    });
+
+    it("returns 404 for someone else's plan instead of updating it", async () => {
+      mockAuthedUser(USER_ID);
+      prismaMock.workoutPlan.findUnique.mockResolvedValueOnce({ userId: OTHER_ID });
+
+      const res = await request(app)
+        .patch(`/v1/workout-plans/${PLAN_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`)
+        .send({ title: "New Name" });
+
+      expect(res.status).toBe(404);
+      expect(prismaMock.workoutPlan.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe("DELETE /v1/workout-plans/:id", () => {
     it("deletes the caller's own plan", async () => {
       mockAuthedUser(USER_ID);

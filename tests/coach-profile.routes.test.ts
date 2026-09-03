@@ -61,6 +61,35 @@ describe("coach-profile routes", () => {
     });
   });
 
+  describe("GET /v1/coach-profiles/:userId", () => {
+    it("returns a single coach's profile with specialties", async () => {
+      mockAuthedUser(COACH_ID, ["USER"]);
+      prismaMock.coachProfile.findUnique.mockResolvedValueOnce({
+        userId: COACH_ID,
+        displayName: "Alex",
+        specialties: [{ specialty: "powerlifting" }],
+      });
+
+      const res = await request(app)
+        .get(`/v1/coach-profiles/${COACH_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(COACH_ID)}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.profile.specialties).toHaveLength(1);
+    });
+
+    it("returns 404 for a coach with no profile", async () => {
+      mockAuthedUser(COACH_ID, ["USER"]);
+      prismaMock.coachProfile.findUnique.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .get(`/v1/coach-profiles/${OTHER_COACH_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(COACH_ID)}`);
+
+      expect(res.status).toBe(404);
+    });
+  });
+
   describe("PATCH /v1/coach-profiles/:userId", () => {
     it("lets a coach create/update their own profile", async () => {
       mockAuthedUser(COACH_ID, ["COACH"]);
