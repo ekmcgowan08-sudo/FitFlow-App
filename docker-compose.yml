@@ -42,7 +42,7 @@ services:
     # production-safe equivalent of `prisma db push` — it never infers or
     # applies unreviewed schema changes, only the SQL already checked in.
     command: >
-      sh -c "npx prisma migrate deploy --schema prisma/schema.prisma && node dist/server.js"
+      sh -c "npx prisma migrate deploy --schema prisma/schema.prisma && node dist/src/server.js"
 
 volumes:
   fitflow_pgdata:
