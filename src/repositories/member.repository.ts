@@ -94,6 +94,14 @@ export class MemberRepository extends BaseRepository<
    * GREATEST(bestCount, currentCount)" update operator, and no
    * conditional "increment, or reset to 1, depending on the date" one
    * either.
+   *
+   * Always anchors to wall-clock `new Date()`, never a caller-supplied
+   * date — deliberately, even though workout-log.routes.ts's ad-hoc log
+   * endpoint accepts an arbitrary past `loggedAt`. Advancing the streak
+   * as of a backdated `loggedAt` would let a member fabricate an
+   * arbitrarily long streak in one sitting by logging one backdated
+   * entry per missed day. See the comment at that call site for the
+   * full reasoning.
    */
   async incrementStreak(userId: string, streakType: string): Promise<void> {
     await this.client.$transaction(async (tx) => {

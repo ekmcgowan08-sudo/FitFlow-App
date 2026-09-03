@@ -104,6 +104,20 @@ router.post('/workout-logs', validate({ body: createWorkoutLogSchema }), async (
     // A logged workout advances the member's "workout" streak. This is
     // the first real caller of MemberRepository.incrementStreak, which
     // previously existed but was never wired to anything.
+    //
+    // Deliberately NOT passed `input.loggedAt`: incrementStreak always
+    // advances against wall-clock "now", even though this ad-hoc log
+    // endpoint accepts an arbitrary past `loggedAt` (logging yesterday's
+    // forgotten workout is a normal, supported use of this endpoint).
+    // The alternative — advancing the streak as of `loggedAt` — would let
+    // a member fabricate an arbitrarily long streak in one sitting by
+    // backdating a run of ad-hoc entries, one per missed day; a streak
+    // that can be built entirely after the fact isn't measuring anything.
+    // Anchoring to "now" means the streak only ever reflects genuine,
+    // same-day logging activity, which is the property a streak feature
+    // exists to encourage — at the (accepted) cost that a late, honest
+    // "forgot to log yesterday" entry counts toward today's streak rather
+    // than repairing yesterday's gap.
     await memberRepository.incrementStreak(input.memberId, 'workout');
 
     res.status(201).json({ session });
