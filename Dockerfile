@@ -42,6 +42,12 @@ RUN npm prune --omit=dev
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 
+# Runs as the `node` user node:22-slim already ships (uid 1000), not
+# root — if the process is ever compromised, it has no more filesystem
+# access than it strictly needs.
+RUN chown -R node:node /app
+USER node
+
 EXPOSE 3000
 
 CMD ["node", "dist/src/server.js"]
