@@ -229,6 +229,8 @@ paths:
               type: object
               properties:
                 fullName: { type: string }
+                birthDate: { type: string, format: date }
+                sexAtBirth: { type: string, enum: [female, male, intersex, undisclosed] }
                 heightCm: { type: number }
                 weightKg: { type: number }
                 timezone: { type: string }
@@ -2407,6 +2409,8 @@ components:
         userId: { type: string, format: uuid }
         firstName: { type: string, nullable: true }
         lastName: { type: string, nullable: true }
+        birthDate: { type: string, format: date, nullable: true }
+        sexAtBirth: { type: string, enum: [female, male, intersex, undisclosed], nullable: true }
         heightCm: { type: number, nullable: true }
         currentWeightKg: { type: number, nullable: true }
         timezone: { type: string }

@@ -13,7 +13,7 @@ A TypeScript/Express/Prisma/PostgreSQL API lives at the repo root:
   control, and refresh-token rotation with reuse detection.
 - `src/repositories/`, `src/validation/`, `src/middleware/` — the
   repository pattern and Zod request validation.
-- `src/routes/` — the full HTTP surface (48 paths — see
+- `src/routes/` — the full HTTP surface (49 paths — see
   `openapi/openapi.yaml`), covering essentially every model in the
   canonical schema:
   - **Identity & auth**: register/login/refresh/logout, member profile

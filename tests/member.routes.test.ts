@@ -181,5 +181,38 @@ describe("member routes", () => {
 
       expect(res.status).toBe(403);
     });
+
+    it("persists birthDate and sexAtBirth", async () => {
+      const userId = "22222222-2222-4222-8222-222222222222";
+      mockAuthedUser(userId, ["USER"]);
+      prismaMock.userProfile.upsert.mockResolvedValueOnce({
+        userId,
+        birthDate: "1995-03-14",
+        sexAtBirth: "female",
+      });
+
+      const res = await request(app)
+        .patch(`/v1/members/${userId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({ birthDate: "1995-03-14", sexAtBirth: "female" });
+
+      expect(res.status).toBe(200);
+      const upsertArgs = prismaMock.userProfile.upsert.mock.calls[0][0];
+      expect(upsertArgs.update.birthDate).toEqual(new Date("1995-03-14"));
+      expect(upsertArgs.update.sexAtBirth).toBe("female");
+    });
+
+    it("rejects fields the API doesn't manage (strict schema)", async () => {
+      const userId = "22222222-2222-4222-8222-222222222222";
+      mockAuthedUser(userId, ["USER"]);
+
+      const res = await request(app)
+        .patch(`/v1/members/${userId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({ email: "new@example.com" });
+
+      expect(res.status).toBe(400);
+      expect(prismaMock.userProfile.upsert).not.toHaveBeenCalled();
+    });
   });
 });
