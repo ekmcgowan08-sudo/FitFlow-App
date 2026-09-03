@@ -3,7 +3,7 @@
  * Depends on MemberRepository only through IDs, never through a direct import
  * of MemberRepository's Prisma calls.
  */
-import type { Prisma, PrismaClient, WorkoutSession } from '@prisma/client';
+import type { Prisma, PrismaClient, WorkoutSession, WorkoutSet } from '@prisma/client';
 import { ExerciseCategory } from '@prisma/client';
 import { BaseRepository, type Page } from './base.repository';
 import { translatePrismaError } from '../lib/domain-errors';
@@ -143,15 +143,58 @@ export class WorkoutLogRepository extends BaseRepository<
     }
   }
 
+  /**
+   * startSession — begins a live, progressively-logged workout (see
+   * src/routes/workout-session.routes.ts), as opposed to
+   * `logAdHocWorkout`'s single-shot retroactive log. When
+   * `planSessionId` is given, the route layer has already confirmed
+   * that plan session belongs to `input.userId`; this copies its
+   * exercises in as the session's starting list, in template order, so
+   * the member doesn't have to re-add every planned exercise by hand.
+   */
+  async startSession(input: { userId: string; planSessionId?: string }): Promise<WorkoutSession> {
+    try {
+      const templateExercises = input.planSessionId
+        ? await this.client.workoutPlanSessionExercise.findMany({
+            where: { planSessionId: input.planSessionId },
+            orderBy: { sortOrder: 'asc' },
+          })
+        : [];
+
+      return await this.client.workoutSession.create({
+        data: {
+          userId: input.userId,
+          planSessionId: input.planSessionId,
+          startedAt: new Date(),
+          status: 'in_progress',
+          ...(templateExercises.length
+            ? {
+                sessionExercises: {
+                  create: templateExercises.map((exercise) => ({
+                    exerciseId: exercise.exerciseId,
+                    sortOrder: exercise.sortOrder,
+                    noteText: exercise.noteText,
+                  })),
+                },
+              }
+            : {}),
+        },
+        include: { sessionExercises: { include: { exercise: true, sets: true }, orderBy: { sortOrder: 'asc' } } },
+      });
+    } catch (err) {
+      throw translatePrismaError(err);
+    }
+  }
+
   async logCompletedSet(input: {
     sessionExerciseId: string;
     setNumber: number;
     reps?: number;
     weightKg?: number;
     durationSeconds?: number;
-  }): Promise<void> {
+  }): Promise<WorkoutSet> {
     try {
-      await this.client.workoutSet.create({
+      return await this.client.workoutSet.create({
         data: {
           sessionExerciseId: input.sessionExerciseId,
           setNumber: input.setNumber,

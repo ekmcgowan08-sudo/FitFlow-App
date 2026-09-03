@@ -9,6 +9,7 @@ import authRoutes from './auth/auth.routes';
 import userRoutes from './routes/user.routes';
 import memberRoutes from './routes/member.routes';
 import workoutLogRoutes from './routes/workout-log.routes';
+import workoutSessionRoutes from './routes/workout-session.routes';
 import goalRoutes from './routes/goal.routes';
 import streakRoutes from './routes/streak.routes';
 import nutritionLogRoutes from './routes/nutrition-log.routes';
@@ -52,6 +53,7 @@ export function createApp(): Express {
   protectedRoutes.use(userRoutes);
   protectedRoutes.use(memberRoutes);
   protectedRoutes.use(workoutLogRoutes);
+  protectedRoutes.use(workoutSessionRoutes);
   protectedRoutes.use(goalRoutes);
   protectedRoutes.use(streakRoutes);
   protectedRoutes.use(nutritionLogRoutes);

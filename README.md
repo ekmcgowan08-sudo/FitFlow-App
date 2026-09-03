@@ -13,17 +13,20 @@ A TypeScript/Express/Prisma/PostgreSQL API lives at the repo root:
   control, and refresh-token rotation with reuse detection.
 - `src/repositories/`, `src/validation/`, `src/middleware/` — the
   repository pattern and Zod request validation.
-- `src/routes/` — the full HTTP surface (38 paths — see
+- `src/routes/` — the full HTTP surface (48 paths — see
   `openapi/openapi.yaml`), covering essentially every model in the
   canonical schema:
   - **Identity & auth**: register/login/refresh/logout, member profile
     read/update, admin user deletion.
   - **Extended profile**: app preferences, health/nutrition targets,
-    allergies.
+    allergies, medical notes (self/ADMIN only).
   - **Training**: the exercise catalog, coach/AI-authored workout plan
-    templates, and the workout-log/session a member actually completes
-    (with a real find-or-create Exercise lookup and full
-    session→exercise→set write on every log).
+    templates, single-shot ad-hoc workout logging (with a real
+    find-or-create Exercise lookup and full session→exercise→set write),
+    and a live workout-session flow — start (optionally from a plan
+    template), add exercises, log each completed set as you go, then
+    complete or cancel — sharing the same WorkoutSession table as the
+    ad-hoc log.
   - **Nutrition**: meal plans, grocery plans (with a server-computed
     estimated total), and ad-hoc nutrition logs.
   - **Coaching**: coach↔client assignments, both directions.

@@ -31,7 +31,12 @@ tags:
   - name: workout-logs
     description: Ad-hoc workout logging (repository-pattern wiring).
   - name: workout-sessions
-    description: Workout-session CRUD scoped to the authenticated user.
+    description: >-
+      The live, progressively-logged workout flow (start, optionally from
+      a workout-plan template; add exercises; log completed sets as you
+      go; complete or cancel) — distinct from workout-logs' single-shot
+      retroactive logging. Scoped to the owning member, ADMIN, or a COACH
+      assigned to that member.
   - name: goals
     description: Member health/fitness goal CRUD.
   - name: streaks
@@ -313,53 +318,175 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
-  /v1/workout-sessions:
-    get:
+  /v1/workout-sessions/start:
+    post:
       tags: [workout-sessions]
-      summary: List the caller's own workout sessions
+      summary: Start a live workout session (own, or another member's via userId if ADMIN, or a COACH assigned to that member)
+      description: >-
+        When planSessionId is given, that WorkoutPlanSession's exercises
+        are copied in as the session's starting exercise list, in
+        template order; the plan session must belong to the same member
+        the session is being started for.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+                planSessionId: { type: string, format: uuid }
       responses:
-        "200":
-          description: Sessions, most recent first.
+        "201":
+          description: The newly-started, in-progress session.
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: "#/components/schemas/WorkoutSession" }
+                type: object
+                properties:
+                  session: { $ref: "#/components/schemas/WorkoutSession" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
-  /v1/workout-sessions/{id}:
+  /v1/workout-sessions/{sessionId}:
     parameters:
-      - name: id
+      - name: sessionId
         in: path
         required: true
-        schema: { type: string }
+        schema: { type: string, format: uuid }
     get:
       tags: [workout-sessions]
-      summary: Get one of the caller's own workout sessions
+      summary: Get a session with its exercises and sets (self, ADMIN, or a COACH assigned to that member)
       responses:
         "200":
           description: The session.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/WorkoutSession" }
+              schema:
+                type: object
+                properties:
+                  session: { $ref: "#/components/schemas/WorkoutSession" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
-    patch:
+
+  /v1/workout-sessions/{sessionId}/exercises:
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
       tags: [workout-sessions]
-      summary: Update the status of one of the caller's own workout sessions
+      summary: Add an exercise to an in-progress session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [exerciseId]
+              properties:
+                exerciseId: { type: string, format: uuid }
+                noteText: { type: string }
+      responses:
+        "201":
+          description: The added session exercise.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionExercise: { $ref: "#/components/schemas/WorkoutSessionExercise" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/workout-sessions/{sessionId}/exercises/{sessionExerciseId}/sets:
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: sessionExerciseId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [workout-sessions]
+      summary: Log a completed set for a session exercise, in an in-progress session
+      description: setNumber is computed server-side as the next number for this session exercise.
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                status: { type: string, enum: [in_progress, completed, cancelled] }
+                reps: { type: integer }
+                weightKg: { type: number }
+                durationSeconds: { type: integer }
       responses:
-        "200":
-          description: Updated session.
+        "201":
+          description: The logged set.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/WorkoutSession" }
+              schema:
+                type: object
+                properties:
+                  set: { $ref: "#/components/schemas/WorkoutSet" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/workout-sessions/{sessionId}/complete:
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [workout-sessions]
+      summary: Complete an in-progress session (advances the "workout" streak)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                caloriesBurned: { type: integer }
+      responses:
+        "200":
+          description: The completed session.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session: { $ref: "#/components/schemas/WorkoutSession" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/workout-sessions/{sessionId}/cancel:
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [workout-sessions]
+      summary: Cancel an in-progress session
+      responses:
+        "200":
+          description: The cancelled session.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session: { $ref: "#/components/schemas/WorkoutSession" }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }

@@ -33,11 +33,22 @@ export interface PrismaMockClient {
   };
   workoutSession: {
     findFirst: jest.Mock;
+    findUnique: jest.Mock;
     findMany: jest.Mock;
     updateMany: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
     count: jest.Mock;
+  };
+  workoutSessionExercise: {
+    findUnique: jest.Mock;
+    create: jest.Mock;
+  };
+  workoutPlanSession: {
+    findUnique: jest.Mock;
+  };
+  workoutPlanSessionExercise: {
+    findMany: jest.Mock;
   };
   workoutSet: {
     create: jest.Mock;
@@ -184,11 +195,22 @@ export const prismaMock: PrismaMockClient = {
   },
   workoutSession: {
     findFirst: jest.fn(),
+    findUnique: jest.fn(),
     findMany: jest.fn(),
     updateMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     count: jest.fn(),
+  },
+  workoutSessionExercise: {
+    findUnique: jest.fn(),
+    create: jest.fn(),
+  },
+  workoutPlanSession: {
+    findUnique: jest.fn(),
+  },
+  workoutPlanSessionExercise: {
+    findMany: jest.fn(),
   },
   workoutSet: {
     create: jest.fn(),
