@@ -108,6 +108,16 @@ router.post(
         throw new ValidationError('This workout session is no longer in progress.');
       }
 
+      // `sortOrder` is a display-ordering hint, not a uniqueness
+      // invariant: `startSession`'s plan-template copy (above) already
+      // carries over whatever `sortOrder` the plan's own exercises were
+      // given, including client-supplied duplicates/defaults — so this
+      // column deliberately has no `@@unique` constraint to enforce here
+      // either. Two exercises added to the same in-progress session in
+      // true concurrent requests could in principle compute the same
+      // `sortOrder` from this stale count and tie for a display position;
+      // accepted as a cosmetic edge case rather than adding transactional
+      // locking for a non-uniqueness field.
       const sessionExercise = await prisma.workoutSessionExercise.create({
         data: {
           workoutSessionId: sessionId,
@@ -146,7 +156,6 @@ router.post(
 
       const set = await workoutLogRepository.logCompletedSet({
         sessionExerciseId,
-        setNumber: sessionExercise.sets.length + 1,
         reps: input.reps,
         weightKg: input.weightKg,
         durationSeconds: input.durationSeconds,

@@ -54,6 +54,7 @@ export interface PrismaMockClient {
   };
   workoutSet: {
     create: jest.Mock;
+    aggregate: jest.Mock;
   };
   exercise: {
     findFirst: jest.Mock;
@@ -226,6 +227,7 @@ export const prismaMock: PrismaMockClient = {
   },
   workoutSet: {
     create: jest.fn(),
+    aggregate: jest.fn(),
   },
   exercise: {
     findFirst: jest.fn(),
@@ -384,6 +386,12 @@ export function installPrismaMockDefaults(): void {
   // non-racing outcome so only tests that actually exercise the race need
   // to override it with `mockResolvedValueOnce({ count: 0 })`.
   prismaMock.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+
+  // WorkoutLogRepository.logCompletedSet computes the next setNumber from
+  // this aggregate's `_max.setNumber` — default to "no sets logged yet"
+  // (null) so tests that don't care about the exact setNumber (most of
+  // them) don't all need to stub this individually.
+  prismaMock.workoutSet.aggregate.mockResolvedValue({ _max: { setNumber: null } });
 }
 
 installPrismaMockDefaults();

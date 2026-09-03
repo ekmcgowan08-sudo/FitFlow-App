@@ -480,6 +480,11 @@ model Exercise {
   planSessionLinks WorkoutPlanSessionExercise[]
   sessionLinks     WorkoutSessionExercise[]
 
+  // Backs the find-or-create in WorkoutLogRepository.logAdHocWorkout:
+  // without it, two concurrent ad-hoc logs of the same free-text
+  // exercise name/category can both miss the `findFirst` and both
+  // `create`, leaving two catalog rows for what should be one exercise.
+  @@unique([name, category])
   @@map("exercises")
 }
 
@@ -607,6 +612,13 @@ model WorkoutSet {
 
   sessionExercise WorkoutSessionExercise @relation(fields: [sessionExerciseId], references: [id], onDelete: Cascade)
 
+  // setNumber is always server-computed (max+1), never client input — see
+  // WorkoutLogRepository.logCompletedSet — so this constraint can never
+  // reject a legitimate write. It exists purely as a safety net: two
+  // concurrent "log a set" requests for the same exercise could otherwise
+  // both compute the same next setNumber and silently create duplicate-
+  // numbered sets instead of one failing loudly for a retry.
+  @@unique([sessionExerciseId, setNumber])
   @@index([sessionExerciseId])
   @@map("workout_sets")
 }

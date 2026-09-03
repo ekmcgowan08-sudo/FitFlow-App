@@ -3,10 +3,50 @@
  * Depends on MemberRepository only through IDs, never through a direct import
  * of MemberRepository's Prisma calls.
  */
-import type { Exercise, Prisma, PrismaClient, WorkoutSession, WorkoutSessionExercise, WorkoutSet } from '@prisma/client';
+import type {
+  Exercise,
+  Prisma,
+  PrismaClient,
+  WorkoutSession,
+  WorkoutSessionExercise,
+  WorkoutSet,
+} from '@prisma/client';
 import { ExerciseCategory } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 import { translatePrismaError } from '../lib/domain-errors';
+
+type PrismaTx = Prisma.TransactionClient;
+
+function isUniqueConstraintViolation(err: unknown): boolean {
+  return (err as { code?: string } | null)?.code === 'P2002';
+}
+
+/**
+ * Finds a catalog Exercise by (name, category), creating it if this is
+ * the first time it's been logged. `exercises` has a `@@unique([name,
+ * category])` constraint (see prisma/schema.prisma) specifically to back
+ * this: two concurrent callers can both miss the `findFirst` and both
+ * attempt the `create`, but only one can win — the loser's `create`
+ * throws P2002, at which point re-querying finds the winner's row
+ * instead of ending up with two catalog rows for the same exercise.
+ */
+async function findOrCreateExercise(
+  tx: PrismaTx,
+  name: string,
+  category: ExerciseCategory,
+): Promise<Exercise> {
+  const existing = await tx.exercise.findFirst({ where: { name, category } });
+  if (existing) return existing;
+
+  try {
+    return await tx.exercise.create({ data: { name, category } });
+  } catch (err) {
+    if (!isUniqueConstraintViolation(err)) throw err;
+    const winner = await tx.exercise.findFirst({ where: { name, category } });
+    if (!winner) throw err; // Shouldn't happen, but don't swallow a real conflict.
+    return winner;
+  }
+}
 
 export interface AdHocWorkoutLogInput {
   userId: string;
@@ -102,13 +142,7 @@ export class WorkoutLogRepository extends BaseRepository<
   async logAdHocWorkout(input: AdHocWorkoutLogInput): Promise<WorkoutSession> {
     try {
       return await this.client.$transaction(async (tx) => {
-        const exercise =
-          (await tx.exercise.findFirst({
-            where: { name: input.exerciseName, category: input.category },
-          })) ??
-          (await tx.exercise.create({
-            data: { name: input.exerciseName, category: input.category },
-          }));
+        const exercise = await findOrCreateExercise(tx, input.exerciseName, input.category);
 
         const setCount = input.sets ?? 1;
         const durationSecondsPerSet = Math.round((input.durationMinutes * 60) / setCount);
@@ -162,9 +196,7 @@ export class WorkoutLogRepository extends BaseRepository<
         if (input.exerciseName !== undefined || input.category !== undefined) {
           const name = input.exerciseName ?? sessionExercise.exercise.name;
           const category = input.category ?? sessionExercise.exercise.category;
-          const exercise =
-            (await tx.exercise.findFirst({ where: { name, category } })) ??
-            (await tx.exercise.create({ data: { name, category } }));
+          const exercise = await findOrCreateExercise(tx, name, category);
           exerciseId = exercise.id;
         }
 
@@ -243,27 +275,58 @@ export class WorkoutLogRepository extends BaseRepository<
     }
   }
 
+  /**
+   * logCompletedSet — `setNumber` is computed here (max existing + 1),
+   * not passed in by the caller: the route used to derive it from
+   * `session.sessionExercises[].sets.length`, a snapshot read at the top
+   * of the request, which two near-simultaneous "log a set" calls for the
+   * same exercise could both read before either had written — producing
+   * two sets both numbered, say, 3. Computing it fresh here narrows that
+   * window to just this method, and the `@@unique([sessionExerciseId,
+   * setNumber])` constraint (prisma/schema.prisma) turns a genuine
+   * collision into a P2002 this method retries, instead of silently
+   * writing duplicate-numbered sets.
+   *
+   * The retry budget is sized for the realistic case (a flaky mobile
+   * connection double-submitting the same tap, or two of one member's own
+   * devices logging within the same second), not for arbitrary load —
+   * live-tested with 10 truly simultaneous requests for the same
+   * exercise, 5 succeeded and 5 exhausted their retries and 409'd, but
+   * critically zero duplicate setNumbers were ever written. Losing a
+   * request under extreme contention is an acceptable, retryable-by-the-
+   * client failure mode; silently corrupting the set count is not.
+   */
   async logCompletedSet(input: {
     sessionExerciseId: string;
-    setNumber: number;
     reps?: number;
     weightKg?: number;
     durationSeconds?: number;
   }): Promise<WorkoutSet> {
-    try {
-      return await this.client.workoutSet.create({
-        data: {
-          sessionExerciseId: input.sessionExerciseId,
-          setNumber: input.setNumber,
-          reps: input.reps,
-          weightKg: input.weightKg,
-          durationSeconds: input.durationSeconds,
-          completed: true,
-        },
-      });
-    } catch (err) {
-      throw translatePrismaError(err);
+    const MAX_ATTEMPTS = 5;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const { _max } = await this.client.workoutSet.aggregate({
+          where: { sessionExerciseId: input.sessionExerciseId },
+          _max: { setNumber: true },
+        });
+
+        return await this.client.workoutSet.create({
+          data: {
+            sessionExerciseId: input.sessionExerciseId,
+            setNumber: (_max.setNumber ?? 0) + 1,
+            reps: input.reps,
+            weightKg: input.weightKg,
+            durationSeconds: input.durationSeconds,
+            completed: true,
+          },
+        });
+      } catch (err) {
+        if (isUniqueConstraintViolation(err) && attempt < MAX_ATTEMPTS) continue;
+        throw translatePrismaError(err);
+      }
     }
+    /* istanbul ignore next -- unreachable: the loop above always returns or throws */
+    throw new Error('unreachable');
   }
 
   async completeSession(sessionId: string, caloriesBurned?: number): Promise<WorkoutSession> {

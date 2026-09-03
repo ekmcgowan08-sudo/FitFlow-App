@@ -201,13 +201,18 @@ describe("workout-session routes", () => {
   });
 
   describe("POST /v1/workout-sessions/:sessionId/exercises/:sessionExerciseId/sets", () => {
-    it("logs a completed set, computing the next setNumber", async () => {
+    it("logs a completed set, computing the next setNumber from a fresh aggregate", async () => {
+      // setNumber now comes from `workoutSet.aggregate`'s `_max`, computed
+      // inside logCompletedSet itself, not from a stale in-memory
+      // `sets.length` snapshot — see the race-condition comment on
+      // WorkoutLogRepository.logCompletedSet.
       mockAuthedUser(USER_ID);
       prismaMock.workoutSession.findUnique.mockResolvedValueOnce(
         inProgressSession({
           sessionExercises: [{ id: SESSION_EXERCISE_ID, sets: [{ setNumber: 1 }, { setNumber: 2 }] }],
         }),
       );
+      prismaMock.workoutSet.aggregate.mockResolvedValueOnce({ _max: { setNumber: 2 } });
       prismaMock.workoutSet.create.mockResolvedValueOnce({ id: "set-3", setNumber: 3, reps: 8 });
 
       const res = await request(app)
@@ -218,6 +223,36 @@ describe("workout-session routes", () => {
       expect(res.status).toBe(201);
       expect(prismaMock.workoutSet.create.mock.calls[0][0].data.setNumber).toBe(3);
       expect(res.body.set.id).toBe("set-3");
+    });
+
+    it("retries once when a concurrent request already claimed the computed setNumber", async () => {
+      // Regression test for the setNumber race: two concurrent "log a
+      // set" calls can both aggregate the same _max and both attempt to
+      // create setNumber 3; the loser's create now hits the
+      // `@@unique([sessionExerciseId, setNumber])` constraint and
+      // retries with a freshly recomputed number instead of failing the
+      // request outright.
+      mockAuthedUser(USER_ID);
+      prismaMock.workoutSession.findUnique.mockResolvedValueOnce(
+        inProgressSession({
+          sessionExercises: [{ id: SESSION_EXERCISE_ID, sets: [{ setNumber: 1 }, { setNumber: 2 }] }],
+        }),
+      );
+      prismaMock.workoutSet.aggregate
+        .mockResolvedValueOnce({ _max: { setNumber: 2 } })
+        .mockResolvedValueOnce({ _max: { setNumber: 3 } });
+      prismaMock.workoutSet.create
+        .mockRejectedValueOnce(Object.assign(new Error("Unique constraint failed"), { code: "P2002" }))
+        .mockResolvedValueOnce({ id: "set-4", setNumber: 4, reps: 8 });
+
+      const res = await request(app)
+        .post(`/v1/workout-sessions/${SESSION_ID}/exercises/${SESSION_EXERCISE_ID}/sets`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`)
+        .send({ reps: 8, weightKg: 60 });
+
+      expect(res.status).toBe(201);
+      expect(prismaMock.workoutSet.create).toHaveBeenCalledTimes(2);
+      expect(res.body.set.id).toBe("set-4");
     });
 
     it("returns 404 when the session exercise isn't part of this session", async () => {
