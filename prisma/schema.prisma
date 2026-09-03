@@ -310,7 +310,12 @@ model CoachSpecialty {
 model CoachAssignment {
   coachUserId        String    @map("coach_user_id")
   clientUserId       String    @map("client_user_id")
-  relationshipStatus String    @default("active") @map("relationship_status") @db.VarChar(32)
+  // Defaults to "pending", not "active": canAccessMemberRecord
+  // (src/rbac/member-scope.ts) grants a COACH access to a member purely
+  // by checking this column, so a row must never become "active" without
+  // the client (or an ADMIN) actively accepting it — see
+  // coach-assignment.routes.ts's POST/PATCH handlers.
+  relationshipStatus String    @default("pending") @map("relationship_status") @db.VarChar(32)
   startsOn           DateTime? @map("starts_on") @db.Date
   notes              String?
   createdAt          DateTime  @default(now()) @map("created_at")

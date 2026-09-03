@@ -47,11 +47,16 @@ act on anyone's; COACH can act on their own and, where it makes product
 sense (viewing logs, listing/reading clients' data), on their *actual*
 clients' — enforced by checking for an active `CoachAssignment` row
 (`src/rbac/member-scope.ts`), not just the COACH role, so a coach with no
-assignment to a member has no more access than a stranger. Writes to
-another member's preferences, health targets, or wearable data are
-ADMIN-only even for their coach. A resource id that exists but isn't the
-caller's returns 404, never 403 — existence is never disclosed to a
-caller with no relationship to it.
+assignment to a member has no more access than a stranger. Becoming a
+client's coach requires the client's consent, not just the coach's
+say-so: `POST /v1/coach/assignments` creates a COACH-initiated
+assignment as `pending`, and only the client (or an ADMIN) can PATCH it
+to `active` — a coach can never self-activate their own request, or
+they could otherwise grant themselves access to any member by simply
+naming them. Writes to another member's preferences, health targets, or
+wearable data are ADMIN-only even for their coach. A resource id that
+exists but isn't the caller's returns 404, never 403 — existence is
+never disclosed to a caller with no relationship to it.
 
 Every route above (and the schema/migration/seed/Docker pieces below) has
 been exercised against a real running Postgres instance — not just the

@@ -854,6 +854,12 @@ paths:
     post:
       tags: [coaching]
       summary: Create a coach<->client relationship (a COACH may only name themselves as coach; ADMIN may name any coach)
+      description: >-
+        A COACH-initiated assignment is created with relationshipStatus
+        "pending", never "active" — the coach gets no access to the
+        client's data until the client (or an ADMIN) accepts it via
+        PATCH. Only an ADMIN-created assignment starts "active"
+        immediately.
       requestBody:
         required: true
         content:
@@ -892,13 +898,18 @@ paths:
     patch:
       tags: [coaching]
       summary: Update a coach assignment (either party to the relationship, or ADMIN)
+      description: >-
+        Activating a "pending" assignment (accepting a coaching request)
+        is the one exception to "either party may update it": only the
+        client or an ADMIN may set relationshipStatus to "active" — a
+        coach can never self-activate their own request.
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                relationshipStatus: { type: string, enum: [active, paused, ended] }
+                relationshipStatus: { type: string, enum: [pending, active, paused, ended] }
                 notes: { type: string }
       responses:
         "200":
@@ -2424,7 +2435,7 @@ components:
       properties:
         coachUserId: { type: string, format: uuid }
         clientUserId: { type: string, format: uuid }
-        relationshipStatus: { type: string, enum: [active, paused, ended] }
+        relationshipStatus: { type: string, enum: [pending, active, paused, ended] }
         startsOn: { type: string, format: date, nullable: true }
         notes: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }

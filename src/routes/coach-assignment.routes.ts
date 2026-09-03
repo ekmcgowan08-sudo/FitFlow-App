@@ -79,6 +79,16 @@ router.get('/coach/coaches', validate({ query: listCoachesQuerySchema }), async 
 // POST /v1/coach/assignments — create a coach<->client relationship. A
 // COACH may only create an assignment where they are the coach; ADMIN
 // may create any assignment (e.g. on a client's behalf).
+//
+// A COACH-created assignment starts `pending`, never `active`: since
+// canAccessMemberRecord (src/rbac/member-scope.ts) grants a coach access
+// to a member purely by checking this column, letting a coach create an
+// already-`active` row would let any coach unilaterally grant themselves
+// full access to any member's private data with a single API call — no
+// client consent, no admin approval, nothing to notice or revoke before
+// the damage is done. Only an ADMIN-created assignment starts `active`
+// (admin is already a fully trusted actor with unrestricted access, so
+// this doesn't introduce a new escalation path).
 router.post(
   '/coach/assignments',
   requireRole('COACH', 'ADMIN'),
@@ -96,6 +106,7 @@ router.post(
         data: {
           coachUserId: input.coachUserId,
           clientUserId: input.clientUserId,
+          relationshipStatus: isAdmin(authedReq) ? 'active' : 'pending',
           startsOn: input.startsOn ? new Date(input.startsOn) : undefined,
           notes: input.notes,
         },
@@ -109,8 +120,11 @@ router.post(
 );
 
 // PATCH /v1/coach/assignments/:coachUserId/:clientUserId — update the
-// relationship (e.g. end it). Either party to the relationship, or an
-// ADMIN, may update it.
+// relationship (e.g. accept, pause, or end it). Either party to the
+// relationship, or an ADMIN, may update it — EXCEPT activating a
+// `pending` assignment (accepting a coaching request), which only the
+// client or an ADMIN may do. If the coach could self-activate, `pending`
+// would be no safer than the `active`-by-default it replaced.
 router.patch(
   '/coach/assignments/:coachUserId/:clientUserId',
   validate({ params: coachAssignmentParamsSchema, body: updateCoachAssignmentSchema }),
@@ -129,6 +143,15 @@ router.patch(
         where: { coachUserId_clientUserId: { coachUserId, clientUserId } },
       });
       if (!existing) throw new NotFoundError('Coach assignment not found.');
+
+      if (
+        input.relationshipStatus === 'active' &&
+        existing.relationshipStatus !== 'active' &&
+        authedReq.user.id !== clientUserId &&
+        !isAdmin(authedReq)
+      ) {
+        throw new ForbiddenError('Only the client (or an ADMIN) may accept and activate a coaching request.');
+      }
 
       const assignment = await prisma.coachAssignment.update({
         where: { coachUserId_clientUserId: { coachUserId, clientUserId } },

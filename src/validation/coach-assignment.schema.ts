@@ -3,7 +3,7 @@
  */
 import { z } from 'zod';
 
-export const relationshipStatusEnum = z.enum(['active', 'paused', 'ended']);
+export const relationshipStatusEnum = z.enum(['pending', 'active', 'paused', 'ended']);
 
 /** POST /v1/coach/assignments */
 export const createCoachAssignmentSchema = z

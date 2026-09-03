@@ -111,9 +111,13 @@ describe("coach-assignment routes", () => {
   });
 
   describe("POST /v1/coach/assignments", () => {
-    it("lets a COACH create an assignment where they are the coach", async () => {
+    it("creates a COACH-initiated assignment as pending, never active", async () => {
       mockAuthedUser(COACH_ID, ["COACH"]);
-      prismaMock.coachAssignment.create.mockResolvedValueOnce({ coachUserId: COACH_ID, clientUserId: CLIENT_ID });
+      prismaMock.coachAssignment.create.mockResolvedValueOnce({
+        coachUserId: COACH_ID,
+        clientUserId: CLIENT_ID,
+        relationshipStatus: "pending",
+      });
 
       const res = await request(app)
         .post("/v1/coach/assignments")
@@ -121,6 +125,28 @@ describe("coach-assignment routes", () => {
         .send({ coachUserId: COACH_ID, clientUserId: CLIENT_ID });
 
       expect(res.status).toBe(201);
+      expect(prismaMock.coachAssignment.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ relationshipStatus: "pending" }) }),
+      );
+    });
+
+    it("lets an ADMIN create an assignment that starts active immediately", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.coachAssignment.create.mockResolvedValueOnce({
+        coachUserId: COACH_ID,
+        clientUserId: CLIENT_ID,
+        relationshipStatus: "active",
+      });
+
+      const res = await request(app)
+        .post("/v1/coach/assignments")
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`)
+        .send({ coachUserId: COACH_ID, clientUserId: CLIENT_ID });
+
+      expect(res.status).toBe(201);
+      expect(prismaMock.coachAssignment.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ relationshipStatus: "active" }) }),
+      );
     });
 
     it("forbids a COACH from creating an assignment naming a different coach", async () => {
@@ -198,6 +224,88 @@ describe("coach-assignment routes", () => {
         .send({ relationshipStatus: "ended" });
 
       expect(res.status).toBe(404);
+    });
+
+    it("forbids the coach from self-activating their own pending request", async () => {
+      mockAuthedUser(COACH_ID, ["COACH"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce({
+        coachUserId: COACH_ID,
+        clientUserId: CLIENT_ID,
+        relationshipStatus: "pending",
+      });
+
+      const res = await request(app)
+        .patch(`/v1/coach/assignments/${COACH_ID}/${CLIENT_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(COACH_ID)}`)
+        .send({ relationshipStatus: "active" });
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.coachAssignment.update).not.toHaveBeenCalled();
+    });
+
+    it("lets the client accept and activate a pending coaching request", async () => {
+      mockAuthedUser(CLIENT_ID, ["USER"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce({
+        coachUserId: COACH_ID,
+        clientUserId: CLIENT_ID,
+        relationshipStatus: "pending",
+      });
+      prismaMock.coachAssignment.update.mockResolvedValueOnce({
+        coachUserId: COACH_ID,
+        clientUserId: CLIENT_ID,
+        relationshipStatus: "active",
+      });
+
+      const res = await request(app)
+        .patch(`/v1/coach/assignments/${COACH_ID}/${CLIENT_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(CLIENT_ID)}`)
+        .send({ relationshipStatus: "active" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.assignment.relationshipStatus).toBe("active");
+    });
+
+    it("lets an ADMIN activate a pending request on the client's behalf", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce({
+        coachUserId: COACH_ID,
+        clientUserId: CLIENT_ID,
+        relationshipStatus: "pending",
+      });
+      prismaMock.coachAssignment.update.mockResolvedValueOnce({
+        coachUserId: COACH_ID,
+        clientUserId: CLIENT_ID,
+        relationshipStatus: "active",
+      });
+
+      const res = await request(app)
+        .patch(`/v1/coach/assignments/${COACH_ID}/${CLIENT_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`)
+        .send({ relationshipStatus: "active" });
+
+      expect(res.status).toBe(200);
+    });
+
+    it("lets the coach update notes on a pending request without activating it", async () => {
+      mockAuthedUser(COACH_ID, ["COACH"]);
+      prismaMock.coachAssignment.findUnique.mockResolvedValueOnce({
+        coachUserId: COACH_ID,
+        clientUserId: CLIENT_ID,
+        relationshipStatus: "pending",
+      });
+      prismaMock.coachAssignment.update.mockResolvedValueOnce({
+        coachUserId: COACH_ID,
+        clientUserId: CLIENT_ID,
+        relationshipStatus: "pending",
+        notes: "Following up next week",
+      });
+
+      const res = await request(app)
+        .patch(`/v1/coach/assignments/${COACH_ID}/${CLIENT_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(COACH_ID)}`)
+        .send({ notes: "Following up next week" });
+
+      expect(res.status).toBe(200);
     });
   });
 });
