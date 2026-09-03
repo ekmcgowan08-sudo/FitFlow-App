@@ -29,6 +29,7 @@ import { MemberRepository } from '../repositories/member.repository';
 import { prisma } from '../lib/prisma-client';
 import { canAccessMemberRecord } from '../rbac/member-scope';
 import { ForbiddenError, NotFoundError } from '../lib/errors';
+import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
 const memberRepository = new MemberRepository(prisma);
@@ -97,7 +98,13 @@ router.patch(
         create: {
           userId: id,
           firstName,
-          lastName: rest.join(' ') || undefined,
+          // `null`, not `|| undefined`: a single-word fullName (rest ===
+          // []) means "no last name", and Prisma's `update` treats an
+          // `undefined` field as "leave whatever's already there
+          // unchanged" — so a mononym PATCH would silently fail to
+          // clear a previously-set lastName. `null` explicitly clears
+          // the (nullable) column instead.
+          lastName: rest.join(' ') || null,
           birthDate: input.birthDate ? new Date(input.birthDate) : undefined,
           sexAtBirth: input.sexAtBirth,
           heightCm: input.heightCm,
@@ -105,7 +112,7 @@ router.patch(
           timezone: input.timezone,
         },
         update: {
-          ...(input.fullName ? { firstName, lastName: rest.join(' ') || undefined } : {}),
+          ...(input.fullName ? { firstName, lastName: rest.join(' ') || null } : {}),
           ...(input.birthDate !== undefined ? { birthDate: new Date(input.birthDate) } : {}),
           ...(input.sexAtBirth !== undefined ? { sexAtBirth: input.sexAtBirth } : {}),
           ...(input.heightCm !== undefined ? { heightCm: input.heightCm } : {}),
@@ -116,7 +123,7 @@ router.patch(
 
       res.json({ profile });
     } catch (err) {
-      next(err);
+      next(translatePrismaError(err));
     }
   },
 );

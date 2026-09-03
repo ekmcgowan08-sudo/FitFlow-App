@@ -46,15 +46,26 @@ describe("token.service", () => {
     it("revokes the prior token and links replacedBy when rotating", async () => {
       await issueTokenPair(userId, email, "rt-old-id");
 
-      expect(prismaMock.refreshToken.update).toHaveBeenCalledWith({
-        where: { id: "rt-old-id" },
+      // A conditional `updateMany` (WHERE id AND revokedAt IS NULL), not a
+      // plain `update` keyed only on id — see the comment in
+      // token.service.ts on why this needs to be a compare-and-swap.
+      expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { id: "rt-old-id", revokedAt: null },
         data: { revokedAt: expect.any(Date), replacedBy: "rt-new-id" },
       });
     });
 
     it("does not touch any prior token when rotatedFromId is omitted", async () => {
       await issueTokenPair(userId, email);
-      expect(prismaMock.refreshToken.update).not.toHaveBeenCalled();
+      expect(prismaMock.refreshToken.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("rolls back and throws when the prior token was already rotated by a concurrent request", async () => {
+      prismaMock.refreshToken.updateMany.mockResolvedValueOnce({ count: 0 });
+
+      await expect(issueTokenPair(userId, email, "rt-old-id")).rejects.toThrow(
+        "Refresh token has already been used"
+      );
     });
   });
 
@@ -72,8 +83,8 @@ describe("token.service", () => {
 
       expect(pair.accessToken).toBeDefined();
       expect(pair.refreshToken).toBeDefined();
-      expect(prismaMock.refreshToken.update).toHaveBeenCalledWith({
-        where: { id: "rt-1" },
+      expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { id: "rt-1", revokedAt: null },
         data: { revokedAt: expect.any(Date), replacedBy: "rt-new-id" },
       });
     });

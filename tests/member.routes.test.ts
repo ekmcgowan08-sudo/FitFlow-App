@@ -188,6 +188,26 @@ describe("member routes", () => {
       expect(upsertArgs.update).not.toHaveProperty("timezone");
     });
 
+    it("clears lastName (does not silently keep the old value) when fullName is a single word", async () => {
+      // Regression test: `rest.join(' ') || undefined` looked like it
+      // meant "no last name", but Prisma treats `undefined` in `update`
+      // as "leave the column unchanged" — so switching a profile from
+      // "Jamie Rivera" to just "Jamie" used to leave "Rivera" in place.
+      // `null` is required to actually clear the (nullable) column.
+      const userId = "22222222-2222-4222-8222-222222222222";
+      mockAuthedUser(userId, ["USER"]);
+      prismaMock.userProfile.upsert.mockResolvedValueOnce({ userId, firstName: "Jamie", lastName: null });
+
+      const res = await request(app)
+        .patch(`/v1/members/${userId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({ fullName: "Jamie" });
+
+      expect(res.status).toBe(200);
+      const upsertArgs = prismaMock.userProfile.upsert.mock.calls[0][0];
+      expect(upsertArgs.update.lastName).toBeNull();
+    });
+
     it("forbids a plain user from updating someone else's profile", async () => {
       mockAuthedUser("user-1", ["USER"]);
       const otherId = "33333333-3333-4333-8333-333333333333";

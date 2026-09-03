@@ -375,6 +375,15 @@ export function installPrismaMockDefaults(): void {
     }
     return Promise.all(arg as Promise<unknown>[]);
   });
+
+  // token.service.ts's `issueTokenPair` destructures `{ count }` off this
+  // call's result to detect a lost compare-and-swap race (see the comment
+  // there). A bare `jest.fn()` with no queued value resolves `undefined`,
+  // which would throw on that destructure and turn every unrelated
+  // refresh-rotation test into a 500 — default to the ordinary,
+  // non-racing outcome so only tests that actually exercise the race need
+  // to override it with `mockResolvedValueOnce({ count: 0 })`.
+  prismaMock.refreshToken.updateMany.mockResolvedValue({ count: 1 });
 }
 
 installPrismaMockDefaults();

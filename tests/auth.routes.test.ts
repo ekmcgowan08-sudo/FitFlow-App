@@ -115,6 +115,26 @@ describe("auth routes", () => {
       expect(res.body.error.message).toBe("Invalid email or password");
     });
 
+    it("still runs a bcrypt comparison for an unknown email (no timing leak)", async () => {
+      // Regression test: response body/status alone can't tell you
+      // whether the two failure paths take the same amount of *time* —
+      // only actually observing that bcrypt.compare (the slow, ~tens-of-
+      // milliseconds step) runs unconditionally proves the login handler
+      // can't be timed to distinguish "no such account" from "wrong
+      // password". See the DUMMY_PASSWORD_HASH comment in auth.routes.ts.
+      prismaMock.user.findUnique.mockResolvedValueOnce(null);
+      const compareSpy = jest.spyOn(bcrypt, "compare");
+
+      const res = await request(app).post("/v1/auth/login").send({
+        email: "no-such-account@example.com",
+        password: "whatever-12345",
+      });
+
+      expect(res.status).toBe(401);
+      expect(compareSpy).toHaveBeenCalledTimes(1);
+      compareSpy.mockRestore();
+    });
+
     it("returns the SAME generic 401 for a wrong password", async () => {
       prismaMock.user.findUnique.mockResolvedValueOnce({
         id: "user-2",

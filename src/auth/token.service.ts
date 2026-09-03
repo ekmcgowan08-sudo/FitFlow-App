@@ -70,10 +70,24 @@ export async function issueTokenPair(
     });
 
     if (rotatedFromId) {
-      await tx.refreshToken.update({
-        where: { id: rotatedFromId },
+      // `updateMany` with `revokedAt: null` in the WHERE, not a plain
+      // `update` keyed only on `id`, so the revoke is a conditional
+      // compare-and-swap rather than an unconditional write: two
+      // concurrent redemptions of the same refresh token both pass
+      // rotateRefreshToken's `existing.revokedAt` check (neither has
+      // committed yet), so without this guard both would go on to mint
+      // a fully valid new token pair from one token, silently defeating
+      // the single-use/reuse-detection model this file exists for.
+      const { count } = await tx.refreshToken.updateMany({
+        where: { id: rotatedFromId, revokedAt: null },
         data: { revokedAt: new Date(), replacedBy: created.id },
       });
+      if (count === 0) {
+        // Lost the race — someone else already rotated this token.
+        // Throwing here rolls back the whole transaction, including the
+        // `create` above, so no orphaned child token is left behind.
+        throw new UnauthorizedError("Refresh token has already been used");
+      }
     }
   });
 

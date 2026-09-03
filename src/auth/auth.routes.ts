@@ -19,6 +19,15 @@ const router = Router();
 const BCRYPT_COST_FACTOR = 12;
 const MIN_PASSWORD_LENGTH = 8;
 
+// Precomputed once at module load, never tied to any real account: used
+// as the bcrypt.compare target when login can't find a matching active
+// account, so the request takes the same time either way. Without this,
+// bcrypt.compare (cost factor 12, tens of milliseconds) only ever runs
+// for a real, active account — response latency alone would let an
+// attacker enumerate which emails have accounts, even though the 401
+// body is already identical for both cases.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("not-a-real-password-used-only-for-timing", BCRYPT_COST_FACTOR);
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -108,17 +117,16 @@ router.post(
         select: { id: true, email: true, passwordHash: true, status: true },
       });
 
-      // "No such user" and "wrong password" return the exact same 401 and
-      // message — never reveal which part of the credential pair was
-      // wrong.
+      // "No such user" and "wrong password" return the exact same 401,
+      // message, AND timing — never reveal which part of the credential
+      // pair was wrong, including via response latency. bcrypt.compare
+      // always runs, against the real hash or the dummy one, before any
+      // pass/fail decision, so a nonexistent or inactive account takes
+      // the same time to reject as a wrong password on a real one.
       const genericFailure = () => new UnauthorizedError("Invalid email or password");
+      const passwordMatches = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
 
-      if (!user || user.status !== "active") {
-        throw genericFailure();
-      }
-
-      const passwordMatches = await bcrypt.compare(password, user.passwordHash);
-      if (!passwordMatches) {
+      if (!user || user.status !== "active" || !passwordMatches) {
         throw genericFailure();
       }
 
