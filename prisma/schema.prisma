@@ -353,11 +353,19 @@ model Goal {
 /// package's `streak.upsert(...)` calls, not the old schema's
 /// `currentDays`/`longestDays`.
 model Streak {
-  id           String @id @default(uuid())
-  userId       String @map("user_id")
-  streakType   String @map("streak_type")
-  currentCount Int    @default(0) @map("current_count")
-  bestCount    Int    @default(0) @map("best_count")
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  streakType   String    @map("streak_type")
+  currentCount Int       @default(0) @map("current_count")
+  bestCount    Int       @default(0) @map("best_count")
+  // The calendar date (in the member's own timezone) of the last action
+  // that advanced this streak — see MemberRepository.incrementStreak,
+  // which compares this against "today" to decide whether to no-op
+  // (already counted today), increment (exactly one day later), or
+  // reset to 1 (a gap of 2+ days broke the streak). Nullable only
+  // because a streak can exist with currentCount 0 before its first
+  // real activity.
+  lastActivityDate DateTime? @map("last_activity_date") @db.Date
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

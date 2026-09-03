@@ -7,8 +7,11 @@ import jwt from "jsonwebtoken";
 import { prismaMock } from "../__mocks__/@prisma/client";
 import { createApp } from "../src/app";
 import { JWT_ACCESS_SECRET, JWT_ISSUER, JWT_AUDIENCE } from "../src/lib/env";
+import { DEFAULT_TIMEZONE, calendarDateKey } from "../src/repositories/member.repository";
 
 const app = createApp();
+
+const todayLastActivityDate = new Date(`${calendarDateKey(new Date(), DEFAULT_TIMEZONE)}T00:00:00.000Z`);
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const OTHER_ID = "22222222-2222-4222-8222-222222222222";
@@ -220,7 +223,13 @@ describe("gym routes", () => {
         .send({ userId: USER_ID, gymId: GYM_ID, source: "qr" });
 
       expect(prismaMock.streak.create).toHaveBeenCalledWith({
-        data: { userId: USER_ID, streakType: "gym_checkin", currentCount: 1, bestCount: 1 },
+        data: {
+          userId: USER_ID,
+          streakType: "gym_checkin",
+          currentCount: 1,
+          bestCount: 1,
+          lastActivityDate: todayLastActivityDate,
+        },
       });
     });
 

@@ -12,8 +12,13 @@ import jwt from "jsonwebtoken";
 import { prismaMock } from "../__mocks__/@prisma/client";
 import { createApp } from "../src/app";
 import { JWT_ACCESS_SECRET, JWT_ISSUER, JWT_AUDIENCE } from "../src/lib/env";
+import { DEFAULT_TIMEZONE, ONE_DAY_MS, calendarDateKey } from "../src/repositories/member.repository";
 
 const app = createApp();
+
+const todayKey = calendarDateKey(new Date(), DEFAULT_TIMEZONE);
+const yesterdayKey = calendarDateKey(new Date(Date.now() - ONE_DAY_MS), DEFAULT_TIMEZONE);
+const todayLastActivityDate = new Date(`${todayKey}T00:00:00.000Z`);
 
 function tokenFor(userId: string) {
   return jwt.sign({ email: "athlete@example.com", jti: `jti-${userId}` }, JWT_ACCESS_SECRET, {
@@ -143,7 +148,7 @@ describe("workout-log routes", () => {
       // (MemberRepository.incrementStreak, previously unwired to anything).
       // No existing streak row -> creates the first one.
       expect(prismaMock.streak.create).toHaveBeenCalledWith({
-        data: { userId, streakType: "workout", currentCount: 1, bestCount: 1 },
+        data: { userId, streakType: "workout", currentCount: 1, bestCount: 1, lastActivityDate: todayLastActivityDate },
       });
     });
 
@@ -152,14 +157,15 @@ describe("workout-log routes", () => {
       mockAuthedUser(userId);
       prismaMock.exercise.findFirst.mockResolvedValueOnce({ id: "exercise-1" });
       prismaMock.workoutSession.create.mockResolvedValueOnce({ id: "session-1", userId });
-      // An existing streak already at its best (3/3) — logging one more
-      // workout must push both currentCount AND bestCount to 4, not leave
-      // bestCount frozen at 3.
+      // An existing streak already at its best (3/3), last advanced
+      // yesterday — logging today must push both currentCount AND
+      // bestCount to 4, not leave bestCount frozen at 3.
       prismaMock.streak.findUnique.mockResolvedValueOnce({
         userId,
         streakType: "workout",
         currentCount: 3,
         bestCount: 3,
+        lastActivityDate: new Date(`${yesterdayKey}T00:00:00.000Z`),
       });
 
       const res = await request(app)
@@ -178,7 +184,73 @@ describe("workout-log routes", () => {
       expect(res.status).toBe(201);
       expect(prismaMock.streak.update).toHaveBeenCalledWith({
         where: { userId_streakType: { userId, streakType: "workout" } },
-        data: { currentCount: 4, bestCount: 4 },
+        data: { currentCount: 4, bestCount: 4, lastActivityDate: todayLastActivityDate },
+      });
+    });
+
+    it("does not double-count a second workout logged the same day", async () => {
+      const userId = "11111111-1111-4111-8111-111111111111";
+      mockAuthedUser(userId);
+      prismaMock.exercise.findFirst.mockResolvedValueOnce({ id: "exercise-1" });
+      prismaMock.workoutSession.create.mockResolvedValueOnce({ id: "session-2", userId });
+      prismaMock.streak.findUnique.mockResolvedValueOnce({
+        userId,
+        streakType: "workout",
+        currentCount: 2,
+        bestCount: 2,
+        lastActivityDate: todayLastActivityDate,
+      });
+
+      const res = await request(app)
+        .post("/v1/workout-logs")
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({
+          memberId: userId,
+          exerciseName: "Back Squat",
+          category: "STRENGTH",
+          sets: 3,
+          reps: 5,
+          durationMinutes: 20,
+          loggedAt: new Date().toISOString(),
+        });
+
+      expect(res.status).toBe(201);
+      expect(prismaMock.streak.update).not.toHaveBeenCalled();
+    });
+
+    it("resets currentCount to 1 after a gap of more than one day", async () => {
+      const userId = "11111111-1111-4111-8111-111111111111";
+      mockAuthedUser(userId);
+      prismaMock.exercise.findFirst.mockResolvedValueOnce({ id: "exercise-1" });
+      prismaMock.workoutSession.create.mockResolvedValueOnce({ id: "session-3", userId });
+      // Last activity was 5 days ago — the streak is broken.
+      prismaMock.streak.findUnique.mockResolvedValueOnce({
+        userId,
+        streakType: "workout",
+        currentCount: 10,
+        bestCount: 10,
+        lastActivityDate: new Date(`${calendarDateKey(new Date(Date.now() - 5 * ONE_DAY_MS), DEFAULT_TIMEZONE)}T00:00:00.000Z`),
+      });
+
+      const res = await request(app)
+        .post("/v1/workout-logs")
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({
+          memberId: userId,
+          exerciseName: "Back Squat",
+          category: "STRENGTH",
+          sets: 3,
+          reps: 5,
+          durationMinutes: 20,
+          loggedAt: new Date().toISOString(),
+        });
+
+      expect(res.status).toBe(201);
+      expect(prismaMock.streak.update).toHaveBeenCalledWith({
+        where: { userId_streakType: { userId, streakType: "workout" } },
+        // bestCount stays at its prior high (10) — a broken streak
+        // doesn't erase the member's personal best.
+        data: { currentCount: 1, bestCount: 10, lastActivityDate: todayLastActivityDate },
       });
     });
 

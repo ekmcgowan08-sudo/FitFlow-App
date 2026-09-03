@@ -72,6 +72,7 @@ export interface PrismaMockClient {
     update: jest.Mock;
   };
   userProfile: {
+    findUnique: jest.Mock;
     upsert: jest.Mock;
   };
   userPreference: {
@@ -243,6 +244,7 @@ export const prismaMock: PrismaMockClient = {
     update: jest.fn(),
   },
   userProfile: {
+    findUnique: jest.fn(),
     upsert: jest.fn(),
   },
   userPreference: {

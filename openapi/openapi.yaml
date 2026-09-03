@@ -2196,6 +2196,15 @@ components:
         streakType: { type: string, example: workout }
         currentCount: { type: integer }
         bestCount: { type: integer }
+        lastActivityDate:
+          type: string
+          format: date
+          nullable: true
+          description: >-
+            The calendar date (in the member's own timezone) this streak
+            was last advanced. Used to decide whether the next action
+            continues the streak (exactly one day later), doesn't change
+            it (same day), or resets it to 1 (a gap of 2+ days).
 
     MealType:
       type: string
