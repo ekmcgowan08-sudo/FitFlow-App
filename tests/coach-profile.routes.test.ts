@@ -115,6 +115,24 @@ describe("coach-profile routes", () => {
       expect(prismaMock.coachProfile.upsert).not.toHaveBeenCalled();
     });
 
+    it("does not silently reset acceptsNewClients when omitted from a displayName-only edit", async () => {
+      // Regression test: acceptsNewClients used to carry a Zod
+      // .default(true), so a coach who had stopped taking new clients
+      // and then PATCHed only displayName (fixing a typo) would have
+      // acceptsNewClients silently reset to true.
+      mockAuthedUser(COACH_ID, ["COACH"]);
+      prismaMock.coachProfile.upsert.mockResolvedValueOnce({ userId: COACH_ID, displayName: "Alex T. Coach" });
+
+      const res = await request(app)
+        .patch(`/v1/coach-profiles/${COACH_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(COACH_ID)}`)
+        .send({ displayName: "Alex T. Coach" });
+
+      expect(res.status).toBe(200);
+      const upsertArgs = prismaMock.coachProfile.upsert.mock.calls[0][0];
+      expect(upsertArgs.update).not.toHaveProperty("acceptsNewClients");
+    });
+
     it("lets an ADMIN edit any coach's profile", async () => {
       mockAuthedUser("admin-1", ["ADMIN"]);
       prismaMock.coachProfile.upsert.mockResolvedValueOnce({ userId: OTHER_COACH_ID, displayName: "Set by admin" });

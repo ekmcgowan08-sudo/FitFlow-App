@@ -15,7 +15,15 @@ const baseMemberProfileFields = {
   sexAtBirth: sexAtBirthEnum,
   heightCm: z.coerce.number().min(50).max(250),
   weightKg: z.coerce.number().min(20).max(400),
-  timezone: z.string().trim().min(1).default('America/Chicago'),
+  // No .default() here: this object backs a PATCH schema via .partial()
+  // (see updateMemberProfileSchema below), and Zod applies .default()
+  // to a field even when .partial() makes it optional — so a default
+  // here would silently inject "America/Chicago" into every PATCH that
+  // omits timezone, resetting a member's real timezone on any unrelated
+  // profile edit. The database column already defaults new rows to
+  // "America/Chicago" (see UserProfile.timezone in schema.prisma), which
+  // is all the create path in member.routes.ts needs.
+  timezone: z.string().trim().min(1),
 };
 
 /** PATCH /v1/members/:id — every field optional, at least one required. */

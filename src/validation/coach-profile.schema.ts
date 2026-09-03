@@ -19,11 +19,21 @@ export const specialtyParamsSchema = z.object({
  * changes acceptsNewClients still resends the current displayName
  * (simpler and avoids ever needing a separate "must supply displayName
  * on create" validation path).
+ *
+ * `acceptsNewClients` is deliberately `.optional()`, not `.default(true)`:
+ * a `.default()` here would apply even when the field is omitted, so a
+ * coach who PATCHes only `displayName` (fixing a typo) would silently
+ * have acceptsNewClients reset to true, re-opening themselves to new
+ * clients against their own prior choice. Omitted means "leave
+ * unchanged" on update (coach-profile.routes.ts passes `undefined`
+ * straight through — Prisma treats that as "don't touch this field");
+ * on create, the column's own `@default(true)` in schema.prisma covers
+ * a first-time profile that doesn't specify it.
  */
 export const upsertCoachProfileSchema = z
   .object({
     displayName: z.string().trim().min(1).max(255),
-    acceptsNewClients: z.coerce.boolean().default(true),
+    acceptsNewClients: z.coerce.boolean().optional(),
   })
   .strict();
 export type UpsertCoachProfileInput = z.infer<typeof upsertCoachProfileSchema>;

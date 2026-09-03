@@ -88,7 +88,10 @@ router.patch(
       const profile = await prisma.coachProfile.upsert({
         where: { userId },
         create: { userId, displayName: input.displayName, acceptsNewClients: input.acceptsNewClients },
-        update: { displayName: input.displayName, acceptsNewClients: input.acceptsNewClients },
+        update: {
+          displayName: input.displayName,
+          ...(input.acceptsNewClients !== undefined ? { acceptsNewClients: input.acceptsNewClients } : {}),
+        },
       });
 
       res.json({ profile });

@@ -170,6 +170,24 @@ describe("member routes", () => {
       expect(res.status).toBe(200);
     });
 
+    it("does not silently reset timezone when omitted from a partial update", async () => {
+      // Regression test: timezone used to carry a Zod .default() that
+      // still applied under .partial(), so any PATCH omitting timezone
+      // silently overwrote the member's real timezone with the default.
+      const userId = "22222222-2222-4222-8222-222222222222";
+      mockAuthedUser(userId, ["USER"]);
+      prismaMock.userProfile.upsert.mockResolvedValueOnce({ userId, heightCm: 180 });
+
+      const res = await request(app)
+        .patch(`/v1/members/${userId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({ heightCm: 180 });
+
+      expect(res.status).toBe(200);
+      const upsertArgs = prismaMock.userProfile.upsert.mock.calls[0][0];
+      expect(upsertArgs.update).not.toHaveProperty("timezone");
+    });
+
     it("forbids a plain user from updating someone else's profile", async () => {
       mockAuthedUser("user-1", ["USER"]);
       const otherId = "33333333-3333-4333-8333-333333333333";
