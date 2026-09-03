@@ -78,6 +78,28 @@ describe("grocery-plan routes", () => {
       expect(createArgs.data.items.create).toHaveLength(2);
     });
 
+    it("treats bestDeal: \"false\" as false, not true (strictBoolean, not z.coerce.boolean)", async () => {
+      // Regression test: z.coerce.boolean() runs its input through JS's
+      // Boolean(x), under which the literal string "false" is truthy.
+      // A loosely-typed client sending bestDeal as a string would have
+      // every item silently marked as the best deal regardless of what
+      // it actually sent. See src/validation/shared.ts's strictBoolean.
+      mockAuthedUser(USER_ID);
+      prismaMock.groceryPlan.create.mockResolvedValueOnce({ id: PLAN_ID, userId: USER_ID });
+
+      const res = await request(app)
+        .post("/v1/grocery-plans")
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`)
+        .send({
+          userId: USER_ID,
+          items: [{ storeName: "Trader Joe's", itemName: "Chicken breast", unitPriceUsd: 8.5, bestDeal: "false" }],
+        });
+
+      expect(res.status).toBe(201);
+      const createArgs = prismaMock.groceryPlan.create.mock.calls[0][0];
+      expect(createArgs.data.items.create[0].bestDeal).toBe(false);
+    });
+
     it("forbids creating a grocery plan for someone else without an elevated role", async () => {
       mockAuthedUser(USER_ID, ["USER"]);
 

@@ -2,6 +2,7 @@
  * Zod schema suite — Coach profiles and specialties.
  */
 import { z } from 'zod';
+import { strictBoolean } from './shared';
 
 export const coachUserIdParamsSchema = z.object({
   userId: z.string().uuid('userId must be a valid UUID.'),
@@ -33,13 +34,13 @@ export const specialtyParamsSchema = z.object({
 export const upsertCoachProfileSchema = z
   .object({
     displayName: z.string().trim().min(1).max(255),
-    acceptsNewClients: z.coerce.boolean().optional(),
+    acceptsNewClients: strictBoolean.optional(),
   })
   .strict();
 export type UpsertCoachProfileInput = z.infer<typeof upsertCoachProfileSchema>;
 
 export const listCoachProfilesQuerySchema = z.object({
-  acceptingClients: z.coerce.boolean().optional(),
+  acceptingClients: strictBoolean.optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });

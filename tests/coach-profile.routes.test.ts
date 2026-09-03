@@ -59,6 +59,24 @@ describe("coach-profile routes", () => {
       expect(res.status).toBe(200);
       expect(prismaMock.coachProfile.findMany.mock.calls[0][0].where).toEqual({ acceptsNewClients: true });
     });
+
+    it("filters by acceptingClients=false correctly (not coerced to true)", async () => {
+      // Regression test: query params always arrive as strings, and
+      // z.coerce.boolean() runs them through JS's Boolean(x), under
+      // which the literal string "false" is truthy — so this used to
+      // silently return coaches WITH open rosters when a caller asked
+      // for the opposite. See src/validation/shared.ts's strictBoolean.
+      mockAuthedUser(COACH_ID);
+      prismaMock.coachProfile.findMany.mockResolvedValueOnce([]);
+      prismaMock.coachProfile.count.mockResolvedValueOnce(0);
+
+      const res = await request(app)
+        .get("/v1/coach-profiles?acceptingClients=false")
+        .set("Authorization", `Bearer ${tokenFor(COACH_ID)}`);
+
+      expect(res.status).toBe(200);
+      expect(prismaMock.coachProfile.findMany.mock.calls[0][0].where).toEqual({ acceptsNewClients: false });
+    });
   });
 
   describe("GET /v1/coach-profiles/:userId", () => {

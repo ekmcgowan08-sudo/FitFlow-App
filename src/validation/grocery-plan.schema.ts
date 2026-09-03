@@ -2,13 +2,14 @@
  * Zod schema suite — Grocery Plans.
  */
 import { z } from 'zod';
+import { strictBoolean } from './shared';
 
 const groceryPlanItemFields = z.object({
   storeName: z.string().trim().min(1).max(200),
   itemName: z.string().trim().min(1).max(200),
   quantity: z.string().trim().max(50).optional(),
   unitPriceUsd: z.coerce.number().min(0).max(10000).optional(),
-  bestDeal: z.coerce.boolean().default(false),
+  bestDeal: strictBoolean.default(false),
 });
 
 /** POST /v1/grocery-plans */
