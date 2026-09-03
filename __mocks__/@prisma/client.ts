@@ -38,11 +38,13 @@ export interface PrismaMockClient {
     updateMany: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
+    delete: jest.Mock;
     count: jest.Mock;
   };
   workoutSessionExercise: {
     findUnique: jest.Mock;
     create: jest.Mock;
+    update: jest.Mock;
   };
   workoutPlanSession: {
     findUnique: jest.Mock;
@@ -205,11 +207,13 @@ export const prismaMock: PrismaMockClient = {
     updateMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    delete: jest.fn(),
     count: jest.fn(),
   },
   workoutSessionExercise: {
     findUnique: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
   },
   workoutPlanSession: {
     findUnique: jest.fn(),

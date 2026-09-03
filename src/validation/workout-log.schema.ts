@@ -61,9 +61,25 @@ export const createWorkoutLogSchema = z
 
 export type CreateWorkoutLogInput = z.infer<typeof createWorkoutLogSchema>;
 
-/** PATCH /v1/workout-logs/:id */
+/**
+ * PATCH /v1/workout-logs/:id — deliberately narrower than
+ * createWorkoutLogSchema: no `memberId` (ownership is never reassignable
+ * via PATCH, matching every other resource in this API), and no
+ * `sets`/`reps`/`durationMinutes` (changing those would mean destroying
+ * and regenerating the logged WorkoutSet rows from a flat summary,
+ * which risks silently discarding real per-set data if the log was ever
+ * touched by the live workout-session flow — out of scope for a
+ * metadata-correction endpoint). What's left is safe scalar corrections:
+ * which exercise/category this was, when it happened, and free text.
+ */
 export const updateWorkoutLogSchema = z
-  .object(baseWorkoutLogFields)
+  .object({
+    exerciseName: baseWorkoutLogFields.exerciseName,
+    category: baseWorkoutLogFields.category,
+    loggedAt: baseWorkoutLogFields.loggedAt,
+    caloriesBurned: baseWorkoutLogFields.caloriesBurned,
+    notes: baseWorkoutLogFields.notes,
+  })
   .partial()
   .strict()
   .refine((data) => Object.keys(data).length > 0, {
@@ -91,10 +107,3 @@ export const listWorkoutLogsQuerySchema = z
     path: ['from'],
   });
 
-export const workoutLogResponseSchema = z.object({
-  id: z.string().uuid(),
-  ...baseWorkoutLogFields,
-  createdAt: z.string().datetime(),
-});
-
-export type WorkoutLogResponse = z.infer<typeof workoutLogResponseSchema>;

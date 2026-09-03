@@ -24,15 +24,19 @@ import { AuthenticatedRequest } from '../auth/types';
 import { validate } from '../middleware/validate';
 import {
   createWorkoutLogSchema,
+  updateWorkoutLogSchema,
+  workoutLogIdParamsSchema,
   listWorkoutLogsQuerySchema,
   toExerciseCategory,
   type CreateWorkoutLogInput,
+  type UpdateWorkoutLogInput,
 } from '../validation/workout-log.schema';
 import { WorkoutLogRepository } from '../repositories/workout-log.repository';
 import { MemberRepository } from '../repositories/member.repository';
 import { prisma } from '../lib/prisma-client';
 import { canAccessMemberRecord } from '../rbac/member-scope';
-import { ForbiddenError } from '../lib/errors';
+import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors';
+import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
 const workoutLogRepository = new WorkoutLogRepository(prisma);
@@ -105,6 +109,63 @@ router.post('/workout-logs', validate({ body: createWorkoutLogSchema }), async (
     res.status(201).json({ session });
   } catch (err) {
     next(err);
+  }
+});
+
+router.patch(
+  '/workout-logs/:id',
+  validate({ params: workoutLogIdParamsSchema, body: updateWorkoutLogSchema }),
+  async (req, res: Response, next) => {
+    try {
+      const authedReq = req as AuthenticatedRequest;
+      const { id } = req.validated!.params as { id: string };
+      const input = req.validated!.body as UpdateWorkoutLogInput;
+
+      const existing = await prisma.workoutSession.findUnique({
+        where: { id },
+        include: { sessionExercises: { include: { exercise: true } } },
+      });
+      if (!existing) throw new NotFoundError('Workout log not found.');
+      if (!(await canAccessMemberRecord(prisma, authedReq.user, existing.userId))) {
+        throw new NotFoundError('Workout log not found.');
+      }
+      if (existing.sessionExercises.length !== 1) {
+        throw new ValidationError(
+          'This endpoint only edits single-exercise ad-hoc logs; use the workout-session routes to manage a multi-exercise session.',
+        );
+      }
+
+      const session = await workoutLogRepository.updateAdHocWorkout(existing, {
+        exerciseName: input.exerciseName,
+        category: input.category ? toExerciseCategory(input.category) : undefined,
+        loggedAt: input.loggedAt ? new Date(input.loggedAt) : undefined,
+        caloriesBurned: input.caloriesBurned,
+        notes: input.notes,
+      });
+
+      res.json({ session });
+    } catch (err) {
+      next(translatePrismaError(err));
+    }
+  },
+);
+
+router.delete('/workout-logs/:id', validate({ params: workoutLogIdParamsSchema }), async (req, res: Response, next) => {
+  try {
+    const authedReq = req as AuthenticatedRequest;
+    const { id } = req.validated!.params as { id: string };
+
+    const existing = await prisma.workoutSession.findUnique({ where: { id }, select: { userId: true } });
+    if (!existing) throw new NotFoundError('Workout log not found.');
+    if (!(await canAccessMemberRecord(prisma, authedReq.user, existing.userId))) {
+      throw new NotFoundError('Workout log not found.');
+    }
+
+    // Cascades to sessionExercises and their sets (onDelete: Cascade).
+    await prisma.workoutSession.delete({ where: { id } });
+    res.status(204).send();
+  } catch (err) {
+    next(translatePrismaError(err));
   }
 });
 

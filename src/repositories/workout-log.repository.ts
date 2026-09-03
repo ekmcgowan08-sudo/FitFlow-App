@@ -3,7 +3,7 @@
  * Depends on MemberRepository only through IDs, never through a direct import
  * of MemberRepository's Prisma calls.
  */
-import type { Prisma, PrismaClient, WorkoutSession, WorkoutSet } from '@prisma/client';
+import type { Exercise, Prisma, PrismaClient, WorkoutSession, WorkoutSessionExercise, WorkoutSet } from '@prisma/client';
 import { ExerciseCategory } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 import { translatePrismaError } from '../lib/domain-errors';
@@ -19,6 +19,18 @@ export interface AdHocWorkoutLogInput {
   caloriesBurned?: number;
   notes?: string;
 }
+
+export interface UpdateAdHocWorkoutInput {
+  exerciseName?: string;
+  category?: ExerciseCategory;
+  loggedAt?: Date;
+  caloriesBurned?: number;
+  notes?: string;
+}
+
+type AdHocWorkoutSession = WorkoutSession & {
+  sessionExercises: (WorkoutSessionExercise & { exercise: Exercise })[];
+};
 
 export class WorkoutLogRepository extends BaseRepository<
   Prisma.WorkoutSessionWhereUniqueInput,
@@ -125,6 +137,62 @@ export class WorkoutLogRepository extends BaseRepository<
             },
           },
           include: { sessionExercises: { include: { sets: true } } },
+        });
+      });
+    } catch (err) {
+      throw translatePrismaError(err);
+    }
+  }
+
+  /**
+   * updateAdHocWorkout — the real implementation behind
+   * `PATCH /workout-logs/:id`. The caller (workout-log.routes.ts) has
+   * already confirmed ownership and that `existing` has exactly one
+   * session exercise — this endpoint only corrects metadata (which
+   * exercise/category, when it happened, calories, notes), never the
+   * sets/reps a workout was actually logged with, so there's no set
+   * regeneration here, just a session + session-exercise update.
+   */
+  async updateAdHocWorkout(existing: AdHocWorkoutSession, input: UpdateAdHocWorkoutInput): Promise<WorkoutSession> {
+    try {
+      return await this.client.$transaction(async (tx) => {
+        const sessionExercise = existing.sessionExercises[0];
+        let exerciseId = sessionExercise.exerciseId;
+
+        if (input.exerciseName !== undefined || input.category !== undefined) {
+          const name = input.exerciseName ?? sessionExercise.exercise.name;
+          const category = input.category ?? sessionExercise.exercise.category;
+          const exercise =
+            (await tx.exercise.findFirst({ where: { name, category } })) ??
+            (await tx.exercise.create({ data: { name, category } }));
+          exerciseId = exercise.id;
+        }
+
+        if (exerciseId !== sessionExercise.exerciseId || input.notes !== undefined) {
+          await tx.workoutSessionExercise.update({
+            where: { id: sessionExercise.id },
+            data: {
+              ...(exerciseId !== sessionExercise.exerciseId ? { exerciseId } : {}),
+              ...(input.notes !== undefined ? { noteText: input.notes } : {}),
+            },
+          });
+        }
+
+        // Shifting loggedAt preserves the originally-logged elapsed time
+        // (durationMinutes isn't editable here) rather than recomputing
+        // completedAt from scratch.
+        const elapsedMs = existing.completedAt ? existing.completedAt.getTime() - existing.startedAt.getTime() : 0;
+        const startedAt = input.loggedAt ?? existing.startedAt;
+
+        return tx.workoutSession.update({
+          where: { id: existing.id },
+          data: {
+            ...(input.loggedAt !== undefined
+              ? { startedAt, completedAt: new Date(startedAt.getTime() + elapsedMs) }
+              : {}),
+            ...(input.caloriesBurned !== undefined ? { caloriesBurned: input.caloriesBurned } : {}),
+          },
+          include: { sessionExercises: { include: { exercise: true, sets: true } } },
         });
       });
     } catch (err) {

@@ -220,4 +220,172 @@ describe("workout-log routes", () => {
       expect(res.status).toBe(400);
     });
   });
+
+  describe("PATCH /v1/workout-logs/:id", () => {
+    const userId = "11111111-1111-4111-8111-111111111111";
+    const logId = "33333333-3333-4333-8333-333333333333";
+
+    it("corrects metadata on a single-exercise ad-hoc log", async () => {
+      mockAuthedUser(userId);
+      prismaMock.workoutSession.findUnique.mockResolvedValueOnce({
+        id: logId,
+        userId,
+        startedAt: new Date("2026-06-01T10:00:00Z"),
+        completedAt: new Date("2026-06-01T10:20:00Z"),
+        caloriesBurned: 200,
+        sessionExercises: [
+          { id: "se-1", exerciseId: "exercise-1", exercise: { id: "exercise-1", name: "Back Squat", category: "strength" } },
+        ],
+      });
+      prismaMock.workoutSession.update.mockResolvedValueOnce({ id: logId, caloriesBurned: 250 });
+
+      const res = await request(app)
+        .patch(`/v1/workout-logs/${logId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({ caloriesBurned: 250, notes: "Felt great" });
+
+      expect(res.status).toBe(200);
+      expect(prismaMock.workoutSessionExercise.update).toHaveBeenCalledWith({
+        where: { id: "se-1" },
+        data: { noteText: "Felt great" },
+      });
+      expect(prismaMock.workoutSession.update).toHaveBeenCalledWith({
+        where: { id: logId },
+        data: { caloriesBurned: 250 },
+        include: { sessionExercises: { include: { exercise: true, sets: true } } },
+      });
+    });
+
+    it("re-resolves the exercise when exerciseName/category changes", async () => {
+      mockAuthedUser(userId);
+      prismaMock.workoutSession.findUnique.mockResolvedValueOnce({
+        id: logId,
+        userId,
+        startedAt: new Date("2026-06-01T10:00:00Z"),
+        completedAt: new Date("2026-06-01T10:20:00Z"),
+        sessionExercises: [
+          { id: "se-1", exerciseId: "exercise-1", exercise: { id: "exercise-1", name: "Back Squat", category: "strength" } },
+        ],
+      });
+      prismaMock.exercise.findFirst.mockResolvedValueOnce(null);
+      prismaMock.exercise.create.mockResolvedValueOnce({ id: "exercise-2", name: "Front Squat", category: "strength" });
+      prismaMock.workoutSession.update.mockResolvedValueOnce({ id: logId });
+
+      const res = await request(app)
+        .patch(`/v1/workout-logs/${logId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({ exerciseName: "Front Squat" });
+
+      expect(res.status).toBe(200);
+      expect(prismaMock.exercise.findFirst).toHaveBeenCalledWith({
+        where: { name: "Front Squat", category: "strength" },
+      });
+      expect(prismaMock.workoutSessionExercise.update).toHaveBeenCalledWith({
+        where: { id: "se-1" },
+        data: { exerciseId: "exercise-2" },
+      });
+    });
+
+    it("shifting loggedAt preserves the originally-logged elapsed time", async () => {
+      mockAuthedUser(userId);
+      prismaMock.workoutSession.findUnique.mockResolvedValueOnce({
+        id: logId,
+        userId,
+        startedAt: new Date("2026-06-01T10:00:00Z"),
+        completedAt: new Date("2026-06-01T10:20:00Z"), // 20-minute log
+        sessionExercises: [
+          { id: "se-1", exerciseId: "exercise-1", exercise: { id: "exercise-1", name: "Back Squat", category: "strength" } },
+        ],
+      });
+      prismaMock.workoutSession.update.mockResolvedValueOnce({ id: logId });
+
+      const res = await request(app)
+        .patch(`/v1/workout-logs/${logId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({ loggedAt: "2026-06-02T09:00:00.000Z" });
+
+      expect(res.status).toBe(200);
+      const updateArgs = prismaMock.workoutSession.update.mock.calls[0][0];
+      expect(updateArgs.data.startedAt).toEqual(new Date("2026-06-02T09:00:00.000Z"));
+      expect(updateArgs.data.completedAt).toEqual(new Date("2026-06-02T09:20:00.000Z"));
+    });
+
+    it("returns 404 (not 403) for a log owned by someone else", async () => {
+      mockAuthedUser(userId);
+      prismaMock.workoutSession.findUnique.mockResolvedValueOnce({
+        id: logId,
+        userId: "22222222-2222-4222-8222-222222222222",
+        sessionExercises: [{ id: "se-1", exerciseId: "exercise-1", exercise: {} }],
+      });
+
+      const res = await request(app)
+        .patch(`/v1/workout-logs/${logId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({ caloriesBurned: 250 });
+
+      expect(res.status).toBe(404);
+      expect(prismaMock.workoutSession.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects editing a multi-exercise session, pointing at the live workout-session routes", async () => {
+      mockAuthedUser(userId);
+      prismaMock.workoutSession.findUnique.mockResolvedValueOnce({
+        id: logId,
+        userId,
+        sessionExercises: [
+          { id: "se-1", exerciseId: "exercise-1", exercise: {} },
+          { id: "se-2", exerciseId: "exercise-2", exercise: {} },
+        ],
+      });
+
+      const res = await request(app)
+        .patch(`/v1/workout-logs/${logId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({ caloriesBurned: 250 });
+
+      expect(res.status).toBe(400);
+      expect(prismaMock.workoutSession.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects memberId as a field (ownership isn't reassignable via PATCH)", async () => {
+      mockAuthedUser(userId);
+
+      const res = await request(app)
+        .patch(`/v1/workout-logs/${logId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`)
+        .send({ memberId: "22222222-2222-4222-8222-222222222222" });
+
+      expect(res.status).toBe(400);
+      expect(prismaMock.workoutSession.findUnique).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("DELETE /v1/workout-logs/:id", () => {
+    const userId = "11111111-1111-4111-8111-111111111111";
+    const logId = "33333333-3333-4333-8333-333333333333";
+
+    it("deletes the caller's own log", async () => {
+      mockAuthedUser(userId);
+      prismaMock.workoutSession.findUnique.mockResolvedValueOnce({ userId });
+      prismaMock.workoutSession.delete.mockResolvedValueOnce({ id: logId });
+
+      const res = await request(app)
+        .delete(`/v1/workout-logs/${logId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`);
+
+      expect(res.status).toBe(204);
+    });
+
+    it("returns 404 for someone else's log instead of deleting it", async () => {
+      mockAuthedUser(userId);
+      prismaMock.workoutSession.findUnique.mockResolvedValueOnce({ userId: "22222222-2222-4222-8222-222222222222" });
+
+      const res = await request(app)
+        .delete(`/v1/workout-logs/${logId}`)
+        .set("Authorization", `Bearer ${tokenFor(userId)}`);
+
+      expect(res.status).toBe(404);
+      expect(prismaMock.workoutSession.delete).not.toHaveBeenCalled();
+    });
+  });
 });

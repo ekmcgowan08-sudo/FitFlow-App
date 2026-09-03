@@ -320,6 +320,54 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /v1/workout-logs/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [workout-logs]
+      summary: Correct a single-exercise ad-hoc log's metadata (self, ADMIN, or a COACH assigned to that member)
+      description: >-
+        Scalar corrections only — which exercise/category, when it
+        happened, calories, notes. Not memberId (ownership is never
+        reassignable) and not sets/reps/durationMinutes (changing those
+        would mean regenerating the logged WorkoutSet rows). Rejects with
+        400 if the session has more than one exercise — use the
+        workout-session routes to manage those.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exerciseName: { type: string }
+                category: { $ref: "#/components/schemas/WorkoutCategory" }
+                caloriesBurned: { type: number }
+                loggedAt: { type: string, format: date-time }
+                notes: { type: string }
+      responses:
+        "200":
+          description: Updated workout session.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session: { $ref: "#/components/schemas/WorkoutSession" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [workout-logs]
+      summary: Delete a workout log (self, ADMIN, or a COACH assigned to that member)
+      description: Cascades to its session exercises and sets.
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/workout-sessions/start:
     post:
       tags: [workout-sessions]
