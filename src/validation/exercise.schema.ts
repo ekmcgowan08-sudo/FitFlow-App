@@ -30,3 +30,24 @@ export const createExerciseSchema = z
   })
   .strict();
 export type CreateExerciseInput = z.infer<typeof createExerciseSchema>;
+
+/**
+ * PATCH /v1/exercises/:id (ADMIN only). Scalar catalog fields only, like
+ * workout-plan.routes.ts's title-only PATCH — replacing the nested
+ * muscle/instruction lists is a delete-and-recreate operation, not a
+ * simple field update, and isn't needed yet.
+ */
+export const updateExerciseSchema = z
+  .object({
+    name: z.string().trim().min(2).max(200),
+    category: exerciseCategoryEnum,
+    equipment: z.string().trim().max(200),
+    whyItWorks: z.string().trim().max(2000),
+    howToVideoUrl: z.string().url(),
+  })
+  .partial()
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Provide at least one field to update.',
+  });
+export type UpdateExerciseInput = z.infer<typeof updateExerciseSchema>;

@@ -12,14 +12,17 @@ import { MemberRepository } from '../repositories/member.repository';
 import {
   createGymSchema,
   listGymsQuerySchema,
+  gymIdParamsSchema,
+  updateGymSchema,
   createGymCheckInSchema,
   listGymCheckInsQuerySchema,
   type CreateGymInput,
+  type UpdateGymInput,
   type CreateGymCheckInInput,
 } from '../validation/gym.schema';
 import { prisma } from '../lib/prisma-client';
 import { canAccessMemberRecord } from '../rbac/member-scope';
-import { ForbiddenError } from '../lib/errors';
+import { ForbiddenError, NotFoundError } from '../lib/errors';
 import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
@@ -54,6 +57,57 @@ router.post('/gyms', requireRole('ADMIN'), validate({ body: createGymSchema }), 
     next(translatePrismaError(err));
   }
 });
+
+router.patch(
+  '/gyms/:id',
+  requireRole('ADMIN'),
+  validate({ params: gymIdParamsSchema, body: updateGymSchema }),
+  async (req, res: Response, next) => {
+    try {
+      const { id } = req.validated!.params as { id: string };
+      const input = req.validated!.body as UpdateGymInput;
+
+      const existing = await prisma.gym.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundError('Gym not found.');
+
+      const gym = await prisma.gym.update({
+        where: { id },
+        data: {
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.city !== undefined ? { city: input.city } : {}),
+          ...(input.state !== undefined ? { state: input.state } : {}),
+        },
+      });
+      res.json({ gym });
+    } catch (err) {
+      next(translatePrismaError(err));
+    }
+  },
+);
+
+router.delete(
+  '/gyms/:id',
+  requireRole('ADMIN'),
+  validate({ params: gymIdParamsSchema }),
+  async (req, res: Response, next) => {
+    try {
+      const { id } = req.validated!.params as { id: string };
+
+      const existing = await prisma.gym.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundError('Gym not found.');
+
+      // Fails with a 409 (translatePrismaError maps Prisma's P2003) if
+      // the gym still has check-ins — GymCheckIn.gym is `onDelete:
+      // Restrict`, so removing a gym in active use is a deliberate
+      // "retire it, don't delete history" surface, not a silent data
+      // loss.
+      await prisma.gym.delete({ where: { id } });
+      res.status(204).send();
+    } catch (err) {
+      next(translatePrismaError(err));
+    }
+  },
+);
 
 router.get(
   '/gym-checkins',

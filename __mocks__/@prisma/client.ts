@@ -58,6 +58,8 @@ export interface PrismaMockClient {
     findMany: jest.Mock;
     findUnique: jest.Mock;
     create: jest.Mock;
+    update: jest.Mock;
+    delete: jest.Mock;
     count: jest.Mock;
   };
   streak: {
@@ -134,7 +136,10 @@ export interface PrismaMockClient {
   };
   gym: {
     findMany: jest.Mock;
+    findUnique: jest.Mock;
     create: jest.Mock;
+    update: jest.Mock;
+    delete: jest.Mock;
     count: jest.Mock;
   };
   gymCheckIn: {
@@ -220,6 +225,8 @@ export const prismaMock: PrismaMockClient = {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
     count: jest.fn(),
   },
   streak: {
@@ -296,7 +303,10 @@ export const prismaMock: PrismaMockClient = {
   },
   gym: {
     findMany: jest.fn(),
+    findUnique: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
     count: jest.fn(),
   },
   gymCheckIn: {

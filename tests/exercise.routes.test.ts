@@ -131,4 +131,84 @@ describe("exercise routes", () => {
       ]);
     });
   });
+
+  describe("PATCH /v1/exercises/:id", () => {
+    it("forbids a non-admin from updating the catalog", async () => {
+      mockAuthedUser(USER_ID, ["USER"]);
+
+      const res = await request(app)
+        .patch(`/v1/exercises/${EXERCISE_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`)
+        .send({ equipment: "barbell" });
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.exercise.update).not.toHaveBeenCalled();
+    });
+
+    it("lets an ADMIN update a catalog entry's scalar fields", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.exercise.findUnique.mockResolvedValueOnce({ id: EXERCISE_ID, name: "Back Squat" });
+      prismaMock.exercise.update.mockResolvedValueOnce({ id: EXERCISE_ID, name: "Back Squat", equipment: "barbell" });
+
+      const res = await request(app)
+        .patch(`/v1/exercises/${EXERCISE_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`)
+        .send({ equipment: "barbell" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.exercise.equipment).toBe("barbell");
+    });
+
+    it("returns 404 for an unknown exercise", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.exercise.findUnique.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .patch(`/v1/exercises/${EXERCISE_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`)
+        .send({ equipment: "barbell" });
+
+      expect(res.status).toBe(404);
+      expect(prismaMock.exercise.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("DELETE /v1/exercises/:id", () => {
+    it("forbids a non-admin from removing a catalog entry", async () => {
+      mockAuthedUser(USER_ID, ["USER"]);
+
+      const res = await request(app)
+        .delete(`/v1/exercises/${EXERCISE_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.exercise.delete).not.toHaveBeenCalled();
+    });
+
+    it("lets an ADMIN delete an unused catalog entry", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.exercise.findUnique.mockResolvedValueOnce({ id: EXERCISE_ID, name: "Back Squat" });
+      prismaMock.exercise.delete.mockResolvedValueOnce({ id: EXERCISE_ID });
+
+      const res = await request(app)
+        .delete(`/v1/exercises/${EXERCISE_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`);
+
+      expect(res.status).toBe(204);
+    });
+
+    it("returns 409 (not 500) when the exercise is still used in a plan or logged session", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.exercise.findUnique.mockResolvedValueOnce({ id: EXERCISE_ID, name: "Back Squat" });
+      prismaMock.exercise.delete.mockRejectedValueOnce(
+        Object.assign(new Error("Foreign key constraint failed"), { code: "P2003" }),
+      );
+
+      const res = await request(app)
+        .delete(`/v1/exercises/${EXERCISE_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`);
+
+      expect(res.status).toBe(409);
+    });
+  });
 });

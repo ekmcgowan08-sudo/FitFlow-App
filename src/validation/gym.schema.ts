@@ -20,6 +20,24 @@ export const listGymsQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+export const gymIdParamsSchema = z.object({
+  id: z.string().uuid('Gym id must be a valid UUID.'),
+});
+
+/** PATCH /v1/gyms/:id (ADMIN only) */
+export const updateGymSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    city: z.string().trim().max(100),
+    state: z.string().trim().max(100),
+  })
+  .partial()
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Provide at least one field to update.',
+  });
+export type UpdateGymInput = z.infer<typeof updateGymSchema>;
+
 /** POST /v1/gym-checkins */
 export const createGymCheckInSchema = z
   .object({

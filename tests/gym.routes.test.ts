@@ -73,6 +73,86 @@ describe("gym routes", () => {
     });
   });
 
+  describe("PATCH /v1/gyms/:id", () => {
+    it("forbids a non-admin from updating a gym", async () => {
+      mockAuthedUser(USER_ID, ["USER"]);
+
+      const res = await request(app)
+        .patch(`/v1/gyms/${GYM_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`)
+        .send({ city: "Dallas" });
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.gym.update).not.toHaveBeenCalled();
+    });
+
+    it("lets an ADMIN update a gym", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.gym.findUnique.mockResolvedValueOnce({ id: GYM_ID, name: "Downtown Gym", city: "Austin" });
+      prismaMock.gym.update.mockResolvedValueOnce({ id: GYM_ID, name: "Downtown Gym", city: "Dallas" });
+
+      const res = await request(app)
+        .patch(`/v1/gyms/${GYM_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`)
+        .send({ city: "Dallas" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.gym.city).toBe("Dallas");
+    });
+
+    it("returns 404 for a gym that doesn't exist", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.gym.findUnique.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .patch(`/v1/gyms/${GYM_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`)
+        .send({ city: "Dallas" });
+
+      expect(res.status).toBe(404);
+      expect(prismaMock.gym.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("DELETE /v1/gyms/:id", () => {
+    it("forbids a non-admin from deleting a gym", async () => {
+      mockAuthedUser(USER_ID, ["USER"]);
+
+      const res = await request(app)
+        .delete(`/v1/gyms/${GYM_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.gym.delete).not.toHaveBeenCalled();
+    });
+
+    it("lets an ADMIN delete an unused gym", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.gym.findUnique.mockResolvedValueOnce({ id: GYM_ID, name: "Downtown Gym" });
+      prismaMock.gym.delete.mockResolvedValueOnce({ id: GYM_ID });
+
+      const res = await request(app)
+        .delete(`/v1/gyms/${GYM_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`);
+
+      expect(res.status).toBe(204);
+    });
+
+    it("returns 409 (not 500) when the gym still has check-ins", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.gym.findUnique.mockResolvedValueOnce({ id: GYM_ID, name: "Downtown Gym" });
+      prismaMock.gym.delete.mockRejectedValueOnce(
+        Object.assign(new Error("Foreign key constraint failed"), { code: "P2003" }),
+      );
+
+      const res = await request(app)
+        .delete(`/v1/gyms/${GYM_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`);
+
+      expect(res.status).toBe(409);
+    });
+  });
+
   describe("GET /v1/gym-checkins", () => {
     it("defaults to the caller's own userId", async () => {
       mockAuthedUser(USER_ID);

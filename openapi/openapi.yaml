@@ -917,6 +917,48 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /v1/gyms/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [gyms]
+      summary: Update a gym's catalog fields (ADMIN only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                city: { type: string }
+                state: { type: string }
+      responses:
+        "200":
+          description: Updated gym.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gym: { $ref: "#/components/schemas/Gym" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [gyms]
+      summary: Remove a gym from the catalog (ADMIN only)
+      description: Fails with 409 if the gym still has check-ins (GymCheckIn.gym is onDelete Restrict).
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /v1/gym-checkins:
     get:
       tags: [gyms]
@@ -1064,6 +1106,48 @@ paths:
                   exercise: { $ref: "#/components/schemas/Exercise" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [exercises]
+      summary: Update an exercise's scalar catalog fields (ADMIN only)
+      description: >-
+        Scalar fields only — replacing the muscle/instruction lists isn't
+        supported here (delete and recreate the exercise for that).
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                category: { $ref: "#/components/schemas/ExerciseCategory" }
+                equipment: { type: string }
+                whyItWorks: { type: string }
+                howToVideoUrl: { type: string, format: uri }
+      responses:
+        "200":
+          description: Updated exercise.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exercise: { $ref: "#/components/schemas/Exercise" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [exercises]
+      summary: Remove an exercise from the catalog (ADMIN only)
+      description: >-
+        Fails with 409 if the exercise is still referenced by a workout
+        plan or a logged session (both are onDelete Restrict).
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /v1/workout-plans:
     get:

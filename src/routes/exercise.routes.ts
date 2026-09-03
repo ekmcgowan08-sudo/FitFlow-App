@@ -9,7 +9,9 @@ import {
   listExercisesQuerySchema,
   exerciseIdParamsSchema,
   createExerciseSchema,
+  updateExerciseSchema,
   type CreateExerciseInput,
+  type UpdateExerciseInput,
 } from '../validation/exercise.schema';
 import { prisma } from '../lib/prisma-client';
 import { NotFoundError } from '../lib/errors';
@@ -90,6 +92,60 @@ router.post(
       });
 
       res.status(201).json({ exercise });
+    } catch (err) {
+      next(translatePrismaError(err));
+    }
+  },
+);
+
+router.patch(
+  '/exercises/:id',
+  requireRole('ADMIN'),
+  validate({ params: exerciseIdParamsSchema, body: updateExerciseSchema }),
+  async (req, res: Response, next) => {
+    try {
+      const { id } = req.validated!.params as { id: string };
+      const input = req.validated!.body as UpdateExerciseInput;
+
+      const existing = await prisma.exercise.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundError('Exercise not found.');
+
+      const exercise = await prisma.exercise.update({
+        where: { id },
+        data: {
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.category !== undefined ? { category: input.category } : {}),
+          ...(input.equipment !== undefined ? { equipment: input.equipment } : {}),
+          ...(input.whyItWorks !== undefined ? { whyItWorks: input.whyItWorks } : {}),
+          ...(input.howToVideoUrl !== undefined ? { howToVideoUrl: input.howToVideoUrl } : {}),
+        },
+        include: { primaryMuscles: true, secondaryMuscles: true, instructions: true },
+      });
+      res.json({ exercise });
+    } catch (err) {
+      next(translatePrismaError(err));
+    }
+  },
+);
+
+router.delete(
+  '/exercises/:id',
+  requireRole('ADMIN'),
+  validate({ params: exerciseIdParamsSchema }),
+  async (req, res: Response, next) => {
+    try {
+      const { id } = req.validated!.params as { id: string };
+
+      const existing = await prisma.exercise.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundError('Exercise not found.');
+
+      // Fails with a 409 (translatePrismaError maps Prisma's P2003) if
+      // the exercise is still referenced by a workout plan or a logged
+      // session — WorkoutPlanSessionExercise/WorkoutSessionExercise are
+      // both `onDelete: Restrict`, so removing an in-use catalog entry
+      // never silently orphans a member's training history.
+      await prisma.exercise.delete({ where: { id } });
+      res.status(204).send();
     } catch (err) {
       next(translatePrismaError(err));
     }
