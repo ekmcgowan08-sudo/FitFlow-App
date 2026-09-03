@@ -13,6 +13,7 @@ import { requireRole } from '../rbac/rbac.middleware';
 import {
   listGamificationQuerySchema,
   awardBadgeSchema,
+  badgeIdParamsSchema,
   createAchievementSchema,
   updateAchievementSchema,
   achievementIdParamsSchema,
@@ -61,6 +62,27 @@ router.post(
         },
       });
       res.status(201).json({ badge });
+    } catch (err) {
+      next(translatePrismaError(err));
+    }
+  },
+);
+
+router.delete(
+  '/badges/:id',
+  requireRole('ADMIN'),
+  validate({ params: badgeIdParamsSchema }),
+  async (req, res: Response, next) => {
+    try {
+      const { id } = req.validated!.params as { id: string };
+
+      const existing = await prisma.badge.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundError('Badge not found.');
+
+      // Revokes a wrongly-awarded badge. No children reference a Badge,
+      // so this is always a clean delete — no P2003 risk.
+      await prisma.badge.delete({ where: { id } });
+      res.status(204).send();
     } catch (err) {
       next(translatePrismaError(err));
     }

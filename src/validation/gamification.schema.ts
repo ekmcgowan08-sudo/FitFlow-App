@@ -47,3 +47,7 @@ export type UpdateAchievementInput = z.infer<typeof updateAchievementSchema>;
 export const achievementIdParamsSchema = z.object({
   id: z.string().uuid('Achievement id must be a valid UUID.'),
 });
+
+export const badgeIdParamsSchema = z.object({
+  id: z.string().uuid('Badge id must be a valid UUID.'),
+});

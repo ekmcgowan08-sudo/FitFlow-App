@@ -82,6 +82,45 @@ describe("gamification routes", () => {
     });
   });
 
+  describe("DELETE /v1/badges/:id", () => {
+    const BADGE_ID = "44444444-4444-4444-8444-444444444444";
+
+    it("forbids a non-admin from revoking a badge", async () => {
+      mockAuthedUser(USER_ID, ["USER"]);
+
+      const res = await request(app)
+        .delete(`/v1/badges/${BADGE_ID}`)
+        .set("Authorization", `Bearer ${tokenFor(USER_ID)}`);
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.badge.delete).not.toHaveBeenCalled();
+    });
+
+    it("lets an ADMIN revoke a wrongly-awarded badge", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.badge.findUnique.mockResolvedValueOnce({ id: BADGE_ID, userId: USER_ID });
+      prismaMock.badge.delete.mockResolvedValueOnce({ id: BADGE_ID });
+
+      const res = await request(app)
+        .delete(`/v1/badges/${BADGE_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`);
+
+      expect(res.status).toBe(204);
+    });
+
+    it("returns 404 for a badge that doesn't exist", async () => {
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.badge.findUnique.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .delete(`/v1/badges/${BADGE_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`);
+
+      expect(res.status).toBe(404);
+      expect(prismaMock.badge.delete).not.toHaveBeenCalled();
+    });
+  });
+
   describe("GET /v1/achievements", () => {
     it("lets a COACH view an actively-assigned client's achievements", async () => {
       mockAuthedUser("coach-1", ["COACH"]);

@@ -96,7 +96,9 @@ export interface PrismaMockClient {
   };
   badge: {
     findMany: jest.Mock;
+    findUnique: jest.Mock;
     create: jest.Mock;
+    delete: jest.Mock;
   };
   achievement: {
     findMany: jest.Mock;
@@ -265,7 +267,9 @@ export const prismaMock: PrismaMockClient = {
   },
   badge: {
     findMany: jest.fn(),
+    findUnique: jest.fn(),
     create: jest.fn(),
+    delete: jest.fn(),
   },
   achievement: {
     findMany: jest.fn(),
