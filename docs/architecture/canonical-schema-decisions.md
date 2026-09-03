@@ -64,17 +64,26 @@ never designed to interoperate, preserved verbatim under
   is carried over from the product schema with `memberId` renamed to
   `userId` and the relation repointed at `User`.
 
-## Known follow-up work (tracked in the repo's task list, not yet done)
+## Follow-up work from the original reconciliation (now done)
 
-- The repository-pattern package's example routes are illustrative, not
-  production-ready (see `docs/artifacts/README.md`'s "Known conflicts" #3)
-  and will need real cursor pagination, a non-empty-string `userId`
-  requirement, and a full exercise/sets log on create rather than a bare
-  session — fixed when that package is wired into `src/`.
-- The security module's `rbac/rbac.middleware.ts` (`requireCoachOfClient`)
-  and `rbac/example.routes.ts` reference `prisma.coachClient` /
-  `.status`; these need the `coachAssignment` / `.relationshipStatus`
-  rename called out above.
-- The two OpenAPI specs (`docs/artifacts/openapi/product-api.yaml` and
-  `security-module-api.yaml`) still need merging into one spec that matches
-  this schema once routes are wired up.
+The three items originally tracked here as not-yet-done are all resolved:
+- `src/routes/workout-log.routes.ts` has real offset pagination
+  (page/pageSize) and a full session→exercise→set write on every log,
+  replacing the illustrative example wiring's bare-session/no-pagination
+  version.
+- `src/rbac/rbac.middleware.ts`'s `requireCoachOfClient` and
+  `src/routes/rbac-examples.routes.ts` use `coachAssignment` /
+  `.relationshipStatus` throughout — the rename was applied everywhere,
+  not left half-done.
+- `openapi/openapi.yaml` is the single merged spec matching this schema
+  (48 paths as of the live workout-session flow — see its own `info`
+  block for what it supersedes).
+
+Two decisions made after this reconciliation, elsewhere in the codebase,
+are worth knowing about here since they shape how the schema above gets
+used: `src/rbac/member-scope.ts` requires an active `CoachAssignment` for
+any COACH access to a specific member's data (a COACH role alone is
+never enough — see its own doc comment), and `WorkoutSession.status`
+(`in_progress`/`completed`/`cancelled`) backs a live, progressively-
+logged workout flow (`src/routes/workout-session.routes.ts`), not just
+`workout-log.routes.ts`'s single-shot retroactive log.
