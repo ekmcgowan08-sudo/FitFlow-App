@@ -35,17 +35,19 @@ FROM node:22-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY package.json package-lock.json* ./
-COPY --from=deps /app/node_modules ./node_modules
+COPY --chown=node:node package.json package-lock.json* ./
+COPY --from=deps --chown=node:node /app/node_modules ./node_modules
 RUN npm prune --omit=dev
 
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
+COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/prisma ./prisma
 
 # Runs as the `node` user node:22-slim already ships (uid 1000), not
 # root — if the process is ever compromised, it has no more filesystem
-# access than it strictly needs.
-RUN chown -R node:node /app
+# access than it strictly needs. `--chown` on each COPY above sets
+# ownership inline instead of a separate recursive `chown -R` layer,
+# which would re-write ownership metadata for the whole (large)
+# node_modules tree a second time.
 USER node
 
 EXPOSE 3000
