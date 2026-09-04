@@ -49,20 +49,37 @@ export interface ValidationTargets {
 }
 
 export interface ValidationErrorResponse {
-  error: 'ValidationError';
-  message: string;
-  fieldErrors: Record<string, string[]>;
-  formErrors: string[];
+  error: {
+    code: 'VALIDATION_ERROR';
+    message: string;
+    details: {
+      fieldErrors: Record<string, string[]>;
+      formErrors: string[];
+    };
+  };
 }
 
-/** Builds the standard FitFlow validation error payload from a ZodError. */
+/**
+ * Builds the standard FitFlow validation error payload from a ZodError —
+ * shaped to match every other error response in this API (see
+ * lib/errors.ts's `errorHandler` and openapi.yaml's `Error` schema:
+ * `{ error: { code, message, details? } }`). This used to return a
+ * different top-level shape (`{ error: "ValidationError", message,
+ * fieldErrors, formErrors }`, with `error` a bare string instead of an
+ * object) because this 400 is written directly by the `validate()`
+ * middleware below rather than thrown as an AppError and caught by
+ * `errorHandler` — nothing enforced the two paths agreeing on a shape,
+ * and they'd drifted apart despite the OpenAPI spec documenting only
+ * the one `Error` shape for both.
+ */
 export function formatZodError(error: z.ZodError): ValidationErrorResponse {
   const { fieldErrors, formErrors } = z.flattenError(error);
   return {
-    error: 'ValidationError',
-    message: 'One or more fields failed validation.',
-    fieldErrors: fieldErrors as Record<string, string[]>,
-    formErrors,
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: 'One or more fields failed validation.',
+      details: { fieldErrors: fieldErrors as Record<string, string[]>, formErrors },
+    },
   };
 }
 
