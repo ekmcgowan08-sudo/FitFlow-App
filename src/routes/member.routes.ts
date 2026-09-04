@@ -47,12 +47,15 @@ router.get(
   async (req, res: Response, next) => {
     try {
       const { page, pageSize } = req.validated!.query as { page: number; pageSize: number };
-      const members = await memberRepository.findMany({
-        take: pageSize,
-        skip: (page - 1) * pageSize,
-        omit: { passwordHash: true },
-      });
-      res.json({ members, page, pageSize });
+      const [members, total] = await Promise.all([
+        memberRepository.findMany({
+          take: pageSize,
+          skip: (page - 1) * pageSize,
+          omit: { passwordHash: true },
+        }),
+        memberRepository.count(),
+      ]);
+      res.json({ members, page, pageSize, total });
     } catch (err) {
       next(err);
     }

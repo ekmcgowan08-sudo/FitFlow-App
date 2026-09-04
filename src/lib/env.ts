@@ -19,3 +19,16 @@ export const REFRESH_TOKEN_PEPPER = requireEnv("REFRESH_TOKEN_PEPPER");
 
 export const JWT_ISSUER = process.env.JWT_ISSUER ?? "fitflow-suite";
 export const JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? "fitflow-suite-api";
+
+// Comma-separated browser origins allowed to call this API with
+// credentials (the web dashboard in web/, plus any deployment of it) —
+// see src/lib/cors.ts. Empty/unset means "no browser origin is
+// allowed," not "allow everything": this API is Bearer-token
+// authenticated (no cookies), so a same-origin default would silently
+// break every non-browser client (mobile apps, curl, server-to-server)
+// that never sends an Origin header in the first place — cors() only
+// ever applies to requests that do.
+export const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter((origin) => origin.length > 0);

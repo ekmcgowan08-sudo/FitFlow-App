@@ -9,3 +9,4 @@ process.env.JWT_ISSUER ??= "fitflow-suite-test";
 process.env.JWT_AUDIENCE ??= "fitflow-suite-api-test";
 process.env.ACCESS_TOKEN_TTL_SECONDS ??= "900";
 process.env.REFRESH_TOKEN_TTL_DAYS ??= "30";
+process.env.CORS_ALLOWED_ORIGINS ??= "http://localhost:5173";

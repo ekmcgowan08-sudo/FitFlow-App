@@ -21,6 +21,7 @@ export interface PrismaMockClient {
     findMany: jest.Mock;
     create: jest.Mock;
     delete: jest.Mock;
+    count: jest.Mock;
   };
   role: {
     upsert: jest.Mock;
@@ -194,6 +195,7 @@ export const prismaMock: PrismaMockClient = {
     findMany: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
+    count: jest.fn(),
   },
   role: {
     upsert: jest.fn(),

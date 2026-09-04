@@ -48,6 +48,7 @@ describe("member routes", () => {
     it("allows an ADMIN to list members, paginated", async () => {
       mockAuthedUser("admin-1", ["ADMIN"]);
       prismaMock.user.findMany.mockResolvedValueOnce([{ id: "user-2" }]);
+      prismaMock.user.count.mockResolvedValueOnce(37);
 
       const res = await request(app)
         .get("/v1/members?page=2&pageSize=10")
@@ -59,6 +60,11 @@ describe("member routes", () => {
         skip: 10,
         omit: { passwordHash: true },
       });
+      // Regression test: this endpoint used to omit `total` while every
+      // other paginated list endpoint in the API includes it, making it
+      // impossible for a caller (the admin dashboard) to compute page
+      // count or show "N members total".
+      expect(res.body.total).toBe(37);
     });
 
     it("forbids a COACH from listing the entire member directory (use GET /v1/coach/clients instead)", async () => {

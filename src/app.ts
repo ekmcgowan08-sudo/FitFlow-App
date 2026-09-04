@@ -4,6 +4,7 @@
 
 import express, { Express, Router } from 'express';
 import { registerFitFlowErrorMap } from './lib/zod-error-map';
+import { corsMiddleware } from './lib/cors';
 import { authenticate } from './auth/auth.middleware';
 import authRoutes from './auth/auth.routes';
 import userRoutes from './routes/user.routes';
@@ -30,6 +31,7 @@ registerFitFlowErrorMap();
 export function createApp(): Express {
   const app = express();
   app.set('trust proxy', 1);
+  app.use(corsMiddleware);
   app.use(express.json());
 
   // Unauthenticated liveness/readiness probe for docker-compose and load balancers.
