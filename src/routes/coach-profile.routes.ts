@@ -22,8 +22,17 @@ import { translatePrismaError } from '../lib/domain-errors';
 
 const router = Router();
 
+// ADMIN may edit any coach's directory entry. Otherwise, the caller must
+// both be editing their own profile AND actually hold the COACH role —
+// self-or-ADMIN alone would let any plain USER create a CoachProfile for
+// themselves (userId is their own, self-check passes) and show up in the
+// public GET /coach-profiles directory despite never having been granted
+// COACH by anyone. Assigning that role is out of this route's authority
+// (see auth.routes.ts: registration always hands out USER, never
+// self-selected; only ADMIN-driven role changes could add COACH).
 function canWrite(req: AuthenticatedRequest, targetUserId: string): boolean {
-  return req.user.id === targetUserId || hasRole(req.user, 'ADMIN');
+  if (hasRole(req.user, 'ADMIN')) return true;
+  return req.user.id === targetUserId && hasRole(req.user, 'COACH');
 }
 
 router.get(

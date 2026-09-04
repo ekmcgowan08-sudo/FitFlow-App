@@ -121,6 +121,23 @@ describe("coach-profile routes", () => {
       expect(res.status).toBe(200);
     });
 
+    it("forbids a plain USER from creating a coach profile for themselves", async () => {
+      // Regression test: canWrite used to only check self-or-ADMIN, so
+      // any authenticated USER could PATCH their own userId here and
+      // appear in the public GET /coach-profiles directory despite never
+      // having been granted the COACH role by anyone.
+      const plainUserId = "33333333-3333-4333-8333-333333333333";
+      mockAuthedUser(plainUserId, ["USER"]);
+
+      const res = await request(app)
+        .patch(`/v1/coach-profiles/${plainUserId}`)
+        .set("Authorization", `Bearer ${tokenFor(plainUserId)}`)
+        .send({ displayName: "Definitely A Real Coach", acceptsNewClients: true });
+
+      expect(res.status).toBe(403);
+      expect(prismaMock.coachProfile.upsert).not.toHaveBeenCalled();
+    });
+
     it("forbids editing a different coach's profile without an elevated role", async () => {
       mockAuthedUser(COACH_ID, ["COACH"]);
 

@@ -28,11 +28,23 @@ import { translatePrismaError } from '../lib/domain-errors';
 const router = Router();
 const memberRepository = new MemberRepository(prisma);
 
-// Verified check-in sources (QR code scan or geofence) earn points;
-// `manual` (self-reported, unverifiable) does not — a small anti-gaming
-// rule consistent with this codebase's "don't trust unverified client
-// input" stance elsewhere (e.g. JWT roles are always re-checked against
-// the database rather than trusted from the token).
+// KNOWN LIMITATION, not a design decision: `source` (qr/geofence/manual)
+// is a caller-supplied enum with no actual verification behind it — the
+// Gym model carries no location data to check a geofence against, and
+// there's no QR-token issuance/scan flow anywhere in this codebase. Any
+// caller can claim `source: "qr"` on every check-in and always collect
+// the "verified" bonus below; despite the name, nothing here currently
+// distinguishes an honest QR scan from a lie, unlike this codebase's
+// usual "don't trust unverified client input" stance elsewhere (e.g. JWT
+// roles are always re-checked against the database rather than trusted
+// from the token). Left unresolved rather than papered over with fake
+// verification, since a real fix needs product-level decisions this
+// route can't make on its own (gym geolocation + GPS accuracy
+// threshold, or a rotating per-gym QR token and a scan endpoint).
+// Low present-day impact only because `pointsEarned` has no downstream
+// consumer yet (no leaderboard, no reward redemption, no badge
+// threshold reads it) — that stops being true the moment one is added,
+// at which point this becomes exploitable for real, not just cosmetic.
 const POINTS_PER_VERIFIED_CHECKIN = 10;
 
 router.get('/gyms', validate({ query: listGymsQuerySchema }), async (req, res: Response, next) => {
