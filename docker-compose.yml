@@ -34,6 +34,10 @@ services:
       REFRESH_TOKEN_TTL_DAYS: "30"
       PORT: "3000"
       NODE_ENV: production
+      # The dashboard container below, from the browser's perspective —
+      # not the "web" Docker-network hostname, since the browser (not
+      # the api container) is what makes this request.
+      CORS_ALLOWED_ORIGINS: http://localhost:8080
     ports:
       - "3000:3000"
     # Applies every committed migration under prisma/migrations/ in order
@@ -43,6 +47,21 @@ services:
     # applies unreviewed schema changes, only the SQL already checked in.
     command: >
       sh -c "npx prisma migrate deploy --schema prisma/schema.prisma && node dist/src/server.js"
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      # Baked into the JS bundle at build time (see web/Dockerfile's own
+      # comment) — must match whatever origin the *browser* uses to
+      # reach the api container, not a Docker-network-internal hostname.
+      args:
+        VITE_API_BASE_URL: http://localhost:3000
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
 
 volumes:
   fitflow_pgdata:

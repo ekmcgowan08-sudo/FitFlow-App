@@ -13,11 +13,12 @@ A TypeScript/Express/Prisma/PostgreSQL API lives at the repo root:
   control, and refresh-token rotation with reuse detection.
 - `src/repositories/`, `src/validation/`, `src/middleware/` — the
   repository pattern and Zod request validation.
-- `src/routes/` — the full HTTP surface (51 paths — see
-  `openapi/openapi.yaml`), covering essentially every model in the
-  canonical schema:
-  - **Identity & auth**: register/login/refresh/logout, member profile
-    read/update, admin user deletion.
+- `src/routes/` — the full HTTP surface (see `openapi/openapi.yaml`),
+  covering essentially every model in the canonical schema:
+  - **Identity & auth**: register/login/refresh/logout, `GET /v1/users/me`
+    (the caller's own id/email/roles — roles are never in the JWT itself,
+    see token.service.ts), member profile read/update, admin user
+    deletion.
   - **Extended profile**: app preferences, health/nutrition targets,
     allergies, medical notes (self/ADMIN only).
   - **Training**: the exercise catalog, coach/AI-authored workout plan
@@ -34,12 +35,13 @@ A TypeScript/Express/Prisma/PostgreSQL API lives at the repo root:
     points and advance a streak; unverifiable manual ones don't).
   - **Progress**: streaks, gamification (badges/achievements — always
     system-awarded, never client-authored), and daily wearable sync.
-  - RBAC-guarded example routes (`rbac-examples.routes.ts`) kept as a
-    worked reference for the HOF-guard vs. decorator style.
 - `openapi/openapi.yaml` — the spec for everything above, validated with
   `@apidevtools/swagger-parser` after every change.
 - `docs/artifacts/` — every original design/spec/code artifact, preserved
   verbatim, that this backend was consolidated from.
+- `src/lib/cors.ts` — the browser-origin allowlist (`CORS_ALLOWED_ORIGINS`)
+  backing the web dashboard below; every non-browser client (mobile apps,
+  curl, server-to-server) is unaffected by it either way.
 
 Every list/create/update/delete endpoint scoped to a member follows the
 same rule: a plain user can only ever act on their own rows; ADMIN can
@@ -75,14 +77,30 @@ npm run seed
 npm run dev
 ```
 
-### Running the full stack (API + Postgres) in Docker
+### Running the full stack (API + Postgres + dashboard) in Docker
 
 ```bash
 docker compose up --build
 ```
+
+Brings up Postgres, the API (`http://localhost:3000`), and the web
+dashboard (`http://localhost:8080`) together, already pointed at each
+other (`CORS_ALLOWED_ORIGINS` / `VITE_API_BASE_URL` in
+`docker-compose.yml`).
 
 ### Tests
 
 ```bash
 npm test
 ```
+
+## Web Dashboard
+
+`web/` is a separate React + TypeScript + Vite app — the admin/coach
+management UI for this API (member directory, gym and exercise catalog
+management, a coach's client roster and public profile). See
+`web/README.md` for what it covers, its auth model, and how to run or
+build it; it's a distinct `npm` project with its own dependencies and
+CI job, not part of the backend's `npm` workspace. Day-to-day logging
+(workouts, meals, etc.) is left to a mobile client — see that README for
+why.
