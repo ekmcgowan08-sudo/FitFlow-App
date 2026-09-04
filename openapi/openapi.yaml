@@ -2113,6 +2113,31 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/users/me:
+    get:
+      tags: [users]
+      summary: The caller's own id, email, and roles
+      description: >-
+        Roles are never carried in the access token itself (see
+        RefreshToken rotation docs) — this reads the same
+        database-verified roles `authenticate` already attaches to
+        every request, so a client can discover its own roles without
+        decoding (and implicitly trusting) the JWT.
+      responses:
+        "200":
+          description: The authenticated user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  email: { type: string, format: email }
+                  roles:
+                    type: array
+                    items: { type: string, enum: [USER, COACH, ADMIN] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
 components:
   securitySchemes:
     bearerAuth:

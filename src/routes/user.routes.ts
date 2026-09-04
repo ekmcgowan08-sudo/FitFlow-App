@@ -21,8 +21,24 @@ import { Router, Response } from "express";
 import { prisma } from "../lib/prisma-client";
 import { requireRole } from "../rbac/rbac.middleware";
 import { NotFoundError } from "../lib/errors";
+import { AuthenticatedRequest } from "../auth/types";
 
 const router = Router();
+
+// GET /v1/users/me — the caller's own id/email/roles. `authenticate`
+// already re-reads roles from the database into `req.user` on every
+// request (see auth.middleware.ts), so this is a plain read of context
+// that's already there, not an extra query. Exists because nothing in
+// the JWT or the login/register response carries roles (deliberately —
+// see token.service.ts: the access token only ever holds email/jti/sub,
+// so a client can never present a stale or forged role from an old
+// token), which otherwise leaves a caller with no way to know its own
+// roles without this endpoint — needed by the web dashboard (web/) to
+// decide what navigation/pages to show for the signed-in account.
+router.get("/users/me", (req, res: Response) => {
+  const { id, email, roles } = (req as AuthenticatedRequest).user;
+  res.json({ id, email, roles });
+});
 
 // DELETE /v1/admin/users/:id  (admin-only)
 // `requireRole("ADMIN")` is composed directly into the route definition,

@@ -39,6 +39,17 @@ describe("user routes", () => {
     expect(res.status).toBe(401);
   });
 
+  describe("GET /v1/users/me", () => {
+    it("returns the caller's own id, email, and roles", async () => {
+      mockAuthedUser("coach-1", ["COACH", "USER"]);
+
+      const res = await request(app).get("/v1/users/me").set("Authorization", `Bearer ${tokenFor("coach-1")}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ id: "coach-1", email: "athlete@example.com", roles: ["COACH", "USER"] });
+    });
+  });
+
   describe("DELETE /v1/admin/users/:id", () => {
     it("forbids a non-admin caller with 403", async () => {
       mockAuthedUser("user-1", ["USER"]);
