@@ -3,6 +3,7 @@
 // server.ts (real process) and by tests (supertest, no open socket).
 
 import express, { Express, Router } from 'express';
+import helmet from 'helmet';
 import { registerFitFlowErrorMap } from './lib/zod-error-map';
 import { corsMiddleware } from './lib/cors';
 import { authenticate } from './auth/auth.middleware';
@@ -31,6 +32,11 @@ registerFitFlowErrorMap();
 export function createApp(): Express {
   const app = express();
   app.set('trust proxy', 1);
+  // Sensible security-header defaults (X-Content-Type-Options,
+  // X-Frame-Options, HSTS, etc.) for a pure JSON API that never serves
+  // HTML — helmet's default CSP is harmless here since there's no
+  // document for a browser to apply it to.
+  app.use(helmet());
   app.use(corsMiddleware);
   app.use(express.json());
 

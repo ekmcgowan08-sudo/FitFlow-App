@@ -33,3 +33,12 @@ describe("CORS", () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe("security headers (helmet)", () => {
+  it("sets baseline security headers on every response", async () => {
+    const res = await request(app).get("/healthz");
+
+    expect(res.headers["x-content-type-options"]).toBe("nosniff");
+    expect(res.headers["x-dns-prefetch-control"]).toBe("off");
+  });
+});
