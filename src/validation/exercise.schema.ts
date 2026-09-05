@@ -36,14 +36,20 @@ export type CreateExerciseInput = z.infer<typeof createExerciseSchema>;
  * workout-plan.routes.ts's title-only PATCH — replacing the nested
  * muscle/instruction lists is a delete-and-recreate operation, not a
  * simple field update, and isn't needed yet.
+ *
+ * The three nullable columns (equipment/whyItWorks/howToVideoUrl) accept
+ * `null`, not just a string — `.partial()` already makes omitting the
+ * key mean "leave unchanged" (undefined), but without `.nullable()` an
+ * admin would have no way to actually clear one of these once set (e.g.
+ * removing a since-broken howToVideoUrl).
  */
 export const updateExerciseSchema = z
   .object({
     name: z.string().trim().min(2).max(200),
     category: exerciseCategoryEnum,
-    equipment: z.string().trim().max(200),
-    whyItWorks: z.string().trim().max(2000),
-    howToVideoUrl: z.string().url(),
+    equipment: z.string().trim().max(200).nullable(),
+    whyItWorks: z.string().trim().max(2000).nullable(),
+    howToVideoUrl: z.string().url().nullable(),
   })
   .partial()
   .strict()

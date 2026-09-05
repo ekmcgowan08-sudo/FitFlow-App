@@ -135,7 +135,12 @@ function GymForm({
     setIsSaving(true);
     try {
       if (gym) {
-        await updateGym(gym.id, { name, city: city || undefined, state: state || undefined });
+        // `null`, not `undefined`, for a blanked-out field: PATCH treats
+        // `undefined` as "leave unchanged" and `null` as "clear it" (see
+        // updateGymSchema's doc comment on the API side) — using
+        // `undefined` here would make clearing a city/state silently a
+        // no-op instead of actually clearing it.
+        await updateGym(gym.id, { name, city: city || null, state: state || null });
       } else {
         await createGym({ name, city: city || undefined, state: state || undefined });
       }

@@ -22,6 +22,14 @@ test.describe('admin: gym catalog CRUD', () => {
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(row).toContainText('Seattle');
 
+    // Regression coverage for a real bug: clearing city used to be a
+    // silent no-op (the field stayed "Seattle" after save) because the
+    // API had no way to distinguish "leave city alone" from "clear it".
+    await row.getByRole('button', { name: 'Edit' }).click();
+    await page.locator('#gym-city').fill('');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(row).not.toContainText('Seattle');
+
     page.once('dialog', (dialog) => dialog.accept());
     await row.getByRole('button', { name: 'Delete' }).click();
     await expect(page.locator('tr', { hasText: gymName })).toHaveCount(0);

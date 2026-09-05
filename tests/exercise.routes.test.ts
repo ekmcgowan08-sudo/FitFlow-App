@@ -159,6 +159,24 @@ describe("exercise routes", () => {
       expect(res.body.exercise.equipment).toBe("barbell");
     });
 
+    it("clears howToVideoUrl with an explicit null (distinct from omitting the field)", async () => {
+      // Regression test: equipment/whyItWorks/howToVideoUrl used to be
+      // plain (non-nullable) strings in the Zod schema, so there was no
+      // way to actually clear one of these nullable columns — e.g. an
+      // admin removing a since-broken video link.
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.exercise.findUnique.mockResolvedValueOnce({ id: EXERCISE_ID, name: "Back Squat" });
+      prismaMock.exercise.update.mockResolvedValueOnce({ id: EXERCISE_ID, name: "Back Squat", howToVideoUrl: null });
+
+      const res = await request(app)
+        .patch(`/v1/exercises/${EXERCISE_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`)
+        .send({ howToVideoUrl: null });
+
+      expect(res.status).toBe(200);
+      expect(prismaMock.exercise.update.mock.calls[0][0].data).toEqual({ howToVideoUrl: null });
+    });
+
     it("returns 404 for an unknown exercise", async () => {
       mockAuthedUser("admin-1", ["ADMIN"]);
       prismaMock.exercise.findUnique.mockResolvedValueOnce(null);

@@ -103,6 +103,23 @@ describe("gym routes", () => {
       expect(res.body.gym.city).toBe("Dallas");
     });
 
+    it("clears city with an explicit null (distinct from omitting the field)", async () => {
+      // Regression test: city/state used to be plain (non-nullable)
+      // strings in the Zod schema, so there was no way to actually
+      // clear one — only ever set it to a new value or leave it alone.
+      mockAuthedUser("admin-1", ["ADMIN"]);
+      prismaMock.gym.findUnique.mockResolvedValueOnce({ id: GYM_ID, name: "Downtown Gym", city: "Austin" });
+      prismaMock.gym.update.mockResolvedValueOnce({ id: GYM_ID, name: "Downtown Gym", city: null });
+
+      const res = await request(app)
+        .patch(`/v1/gyms/${GYM_ID}`)
+        .set("Authorization", `Bearer ${tokenFor("admin-1")}`)
+        .send({ city: null });
+
+      expect(res.status).toBe(200);
+      expect(prismaMock.gym.update).toHaveBeenCalledWith({ where: { id: GYM_ID }, data: { city: null } });
+    });
+
     it("returns 404 for a gym that doesn't exist", async () => {
       mockAuthedUser("admin-1", ["ADMIN"]);
       prismaMock.gym.findUnique.mockResolvedValueOnce(null);

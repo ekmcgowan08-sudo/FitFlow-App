@@ -98,7 +98,7 @@ export function createGym(input: { name: string; city?: string; state?: string }
   return apiFetch<{ gym: Gym }>('/v1/gyms', { method: 'POST', body: input });
 }
 
-export function updateGym(id: string, input: { name?: string; city?: string; state?: string }) {
+export function updateGym(id: string, input: { name?: string; city?: string | null; state?: string | null }) {
   return apiFetch<{ gym: Gym }>(`/v1/gyms/${id}`, { method: 'PATCH', body: input });
 }
 
@@ -118,7 +118,7 @@ export function createExercise(input: { name: string; category: string; equipmen
   return apiFetch<{ exercise: Exercise }>('/v1/exercises', { method: 'POST', body: input });
 }
 
-export function updateExercise(id: string, input: { name?: string; category?: string; equipment?: string }) {
+export function updateExercise(id: string, input: { name?: string; category?: string; equipment?: string | null }) {
   return apiFetch<{ exercise: Exercise }>(`/v1/exercises/${id}`, { method: 'PATCH', body: input });
 }
 

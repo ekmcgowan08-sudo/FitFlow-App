@@ -148,7 +148,9 @@ function ExerciseForm({
     setIsSaving(true);
     try {
       if (exercise) {
-        await updateExercise(exercise.id, { name, category, equipment: equipment || undefined });
+        // `null`, not `undefined`, for a blanked-out field — see the
+        // matching comment in GymsPage.tsx's GymForm.
+        await updateExercise(exercise.id, { name, category, equipment: equipment || null });
       } else {
         await createExercise({ name, category, equipment: equipment || undefined });
       }

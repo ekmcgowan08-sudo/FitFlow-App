@@ -24,12 +24,20 @@ export const gymIdParamsSchema = z.object({
   id: z.string().uuid('Gym id must be a valid UUID.'),
 });
 
-/** PATCH /v1/gyms/:id (ADMIN only) */
+/**
+ * PATCH /v1/gyms/:id (ADMIN only). `city`/`state` accept `null`
+ * (explicitly clear a nullable column), not just a string — `.partial()`
+ * already makes omitting the key mean "leave unchanged" (undefined),
+ * but without `.nullable()` here there'd be no way to distinguish
+ * "don't touch this field" from "clear it": an empty string is still a
+ * string that would trim to `''`, not the `null` the Gym.city/state
+ * columns actually need to represent "no city on file".
+ */
 export const updateGymSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
-    city: z.string().trim().max(100),
-    state: z.string().trim().max(100),
+    city: z.string().trim().max(100).nullable(),
+    state: z.string().trim().max(100).nullable(),
   })
   .partial()
   .strict()
