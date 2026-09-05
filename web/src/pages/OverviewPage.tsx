@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { getMember, listMyStreaks } from '../api/endpoints';
 import { ApiError } from '../api/client';
@@ -67,15 +68,20 @@ export function OverviewPage() {
           </Card>
 
           <Card className="p-5">
-            <h2 className="mb-3 text-sm font-semibold text-slate-900">Active Goals</h2>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900">Active Goals</h2>
+              <Link to="/goals" className="text-sm text-brand-700 hover:underline">
+                Manage goals →
+              </Link>
+            </div>
             {(member?.goals.length ?? 0) === 0 ? (
               <EmptyState message="No active goals yet." />
             ) : (
               <ul className="divide-y divide-slate-100">
                 {member!.goals.map((goal: Goal) => (
                   <li key={goal.id} className="flex items-center justify-between py-2 text-sm">
-                    <span className="capitalize text-slate-700">{goal.goalType.replace(/_/g, ' ')}</span>
-                    <span className="text-slate-400">{goal.targetDate ? `by ${goal.targetDate}` : ''}</span>
+                    <span className="text-slate-700">{goal.title}</span>
+                    <span className="text-slate-400">{goal.dueDate ? `by ${goal.dueDate}` : ''}</span>
                   </li>
                 ))}
               </ul>

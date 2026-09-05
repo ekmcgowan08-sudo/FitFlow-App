@@ -7,24 +7,49 @@ interface NavItem {
   end?: boolean;
 }
 
-function navItemsFor(roles: string[]): NavItem[] {
-  const items: NavItem[] = [{ to: '/', label: 'Overview', end: true }];
+interface NavSection {
+  heading: string;
+  items: NavItem[];
+}
+
+function navSectionsFor(roles: string[]): NavSection[] {
+  const sections: NavSection[] = [
+    {
+      heading: 'Me',
+      items: [
+        { to: '/', label: 'Overview', end: true },
+        { to: '/profile', label: 'My Profile' },
+        { to: '/goals', label: 'My Goals' },
+        { to: '/my-coaches', label: 'My Coaches' },
+        { to: '/find-a-coach', label: 'Find a Coach' },
+      ],
+    },
+  ];
   if (roles.includes('COACH')) {
-    items.push({ to: '/coach/clients', label: 'My Clients' }, { to: '/coach/profile', label: 'Coach Profile' });
+    sections.push({
+      heading: 'Coaching',
+      items: [
+        { to: '/coach/clients', label: 'My Clients' },
+        { to: '/coach/profile', label: 'Coach Profile' },
+      ],
+    });
   }
   if (roles.includes('ADMIN')) {
-    items.push(
-      { to: '/admin/members', label: 'Members' },
-      { to: '/admin/gyms', label: 'Gyms' },
-      { to: '/admin/exercises', label: 'Exercises' },
-    );
+    sections.push({
+      heading: 'Admin',
+      items: [
+        { to: '/admin/members', label: 'Members' },
+        { to: '/admin/gyms', label: 'Gyms' },
+        { to: '/admin/exercises', label: 'Exercises' },
+      ],
+    });
   }
-  return items;
+  return sections;
 }
 
 export function Layout() {
   const { user, roles, logout } = useAuth();
-  const items = navItemsFor(roles);
+  const sections = navSectionsFor(roles);
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -33,20 +58,31 @@ export function Layout() {
           <div className="h-6 w-6 rounded-md bg-brand-500" />
           <span className="font-semibold text-slate-900">FitFlow</span>
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
+        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+          {sections.map((section) => (
+            <div key={section.heading}>
+              <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {section.heading}
+              </p>
+              <div className="space-y-1">
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      `block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-brand-50 text-brand-700'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
         <div className="border-t border-slate-200 p-4">

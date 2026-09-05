@@ -72,8 +72,8 @@ export function MemberDetailPage() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {member.goals.map((goal) => (
-                <li key={goal.id} className="py-2 text-sm capitalize text-slate-700">
-                  {goal.goalType.replace(/_/g, ' ')}
+                <li key={goal.id} className="py-2 text-sm text-slate-700">
+                  {goal.title}
                 </li>
               ))}
             </ul>

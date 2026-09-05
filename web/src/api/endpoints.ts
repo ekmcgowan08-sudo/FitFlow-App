@@ -9,6 +9,7 @@ import type {
   CoachProfile,
   CoachSpecialty,
   Exercise,
+  Goal,
   Gym,
   Member,
   RoleCode,
@@ -53,6 +54,36 @@ export function deleteUser(id: string) {
 
 export function listMyStreaks() {
   return apiFetch<{ streaks: Streak[] }>('/v1/streaks');
+}
+
+// --- Goals (self by default) ------------------------------------------------
+
+export function listGoals(userId: string, page = 1, pageSize = 50) {
+  return apiFetch<{ goals: Goal[]; page: number; pageSize: number; total: number }>('/v1/goals', {
+    query: { userId, page, pageSize },
+  });
+}
+
+export function createGoal(input: {
+  userId: string;
+  category: string;
+  title: string;
+  targetValue?: number;
+  targetUnit?: string;
+  dueDate?: string;
+}) {
+  return apiFetch<{ goal: Goal }>('/v1/goals', { method: 'POST', body: input });
+}
+
+export function updateGoal(
+  id: string,
+  input: { title?: string; status?: string; targetValue?: number; targetUnit?: string; dueDate?: string },
+) {
+  return apiFetch<{ goal: Goal }>(`/v1/goals/${id}`, { method: 'PATCH', body: input });
+}
+
+export function deleteGoal(id: string) {
+  return apiFetch<void>(`/v1/goals/${id}`, { method: 'DELETE' });
 }
 
 // --- Gyms (ADMIN write, any authenticated read) ---------------------------

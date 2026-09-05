@@ -74,7 +74,7 @@ export function CoachClientsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {assignments.map((a) => (
-                <tr key={a.id} className="hover:bg-slate-50">
+                <tr key={`${a.coachUserId}-${a.clientUserId}`} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">{a.client.email}</td>
                   <td className="px-4 py-3">
                     <Pill tone={STATUS_TONE[a.relationshipStatus] ?? 'slate'}>{a.relationshipStatus}</Pill>

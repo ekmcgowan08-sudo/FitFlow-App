@@ -29,13 +29,18 @@ export interface MemberProfile {
   timezone?: string | null;
 }
 
+export type GoalCategory = 'weight' | 'strength' | 'nutrition' | 'consistency' | 'sleep' | 'budget';
+export type GoalStatus = 'active' | 'paused' | 'achieved' | 'archived';
+
 export interface Goal {
   id: string;
   userId: string;
-  goalType: string;
+  category: GoalCategory;
+  title: string;
   targetValue?: number | null;
-  status: string;
-  targetDate?: string | null;
+  targetUnit?: string | null;
+  dueDate?: string | null;
+  status: GoalStatus;
 }
 
 export interface Streak {
@@ -76,8 +81,11 @@ export interface Exercise {
 
 export type RelationshipStatus = 'pending' | 'active' | 'paused' | 'ended';
 
+// No synthetic `id` — CoachAssignment's real primary key is the
+// composite (coachUserId, clientUserId) (see prisma/schema.prisma's
+// `@@id([coachUserId, clientUserId])`), which is also exactly what
+// PATCH /v1/coach/assignments/:coachUserId/:clientUserId addresses.
 export interface CoachAssignment {
-  id: string;
   coachUserId: string;
   clientUserId: string;
   relationshipStatus: RelationshipStatus;
