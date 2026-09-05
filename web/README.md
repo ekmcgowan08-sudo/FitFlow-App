@@ -28,6 +28,12 @@ cp .env.example .env   # point VITE_API_BASE_URL at your running API
 npm run dev             # http://localhost:5173
 ```
 
+Run `npm run seed` in the API project (`../prisma/seed.ts`) for a
+ready-to-explore login: `admin@fitflow.example` / `coach@fitflow.example`
+/ `member@fitflow.example`, all with password `demo-password-123`,
+already populated with a coaching relationship, a goal, and a workout
+streak — see the root README for details.
+
 The API must have this dashboard's origin in its own
 `CORS_ALLOWED_ORIGINS` (see `../.env.example`) — `http://localhost:5173`
 is the default on both sides, so a fresh checkout of both projects works

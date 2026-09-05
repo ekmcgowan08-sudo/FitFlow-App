@@ -77,6 +77,23 @@ npm run seed
 npm run dev
 ```
 
+`npm run seed` (`prisma/seed.ts`) creates one account per role, all with
+password `demo-password-123`, plus a populated dashboard for the
+member/coach pair (an active coaching relationship, a goal, a workout
+streak, a gym check-in) so the web dashboard isn't a blank slate on
+first login:
+
+| Email | Role |
+|---|---|
+| `admin@fitflow.example` | ADMIN |
+| `coach@fitflow.example` | COACH |
+| `member@fitflow.example` | USER |
+
+Safe to re-run — every seeded row is keyed by email/name (upsert) or a
+"does this already exist" check first, so running it again resets the
+demo data to these known values rather than duplicating rows or leaving
+stale state from earlier manual testing against the same database.
+
 ### Running the full stack (API + Postgres + dashboard) in Docker
 
 ```bash
