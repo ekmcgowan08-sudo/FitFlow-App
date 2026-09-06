@@ -3,12 +3,13 @@
  * This is the ONLY file allowed to call `prisma.user.*` / `prisma.userProfile.*`
  * directly. Services and routes depend on this interface instead.
  */
-import type { Prisma, PrismaClient, User } from '@prisma/client';
+import type { Prisma, PrismaClient, RoleCode, User } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 
 export type MemberWithProfile = Omit<User, 'passwordHash'> & {
   profile: Prisma.UserProfileGetPayload<Record<string, never>> | null;
   goals: Prisma.GoalGetPayload<Record<string, never>>[];
+  roles: RoleCode[];
 };
 
 export const DEFAULT_TIMEZONE = 'America/Chicago';
@@ -66,9 +67,15 @@ export class MemberRepository extends BaseRepository<
     super(client.user);
   }
 
-  /** Domain-named finder used by the dashboard and coach portfolio screens. */
+  /**
+   * Domain-named finder used by the dashboard and coach portfolio
+   * screens. `roles` is flattened from the raw `UserRole` join-table
+   * rows into a plain `RoleCode[]` (matching GET /v1/users/me's shape)
+   * rather than exposing the join table's own nested shape — callers
+   * want "what roles does this member have", not how that's modeled.
+   */
   async findWithProfileAndGoals(userId: string): Promise<MemberWithProfile | null> {
-    return this.client.user.findUnique({
+    const user = await this.client.user.findUnique({
       where: { id: userId },
       // `omit` keeps `passwordHash` out of every caller's response by
       // construction, rather than relying on every route handler to
@@ -77,8 +84,12 @@ export class MemberRepository extends BaseRepository<
       include: {
         profile: true,
         goals: { where: { status: 'active' } },
+        roles: { select: { role: { select: { code: true } } } },
       },
-    }) as Promise<MemberWithProfile | null>;
+    });
+    if (!user) return null;
+    const { roles, ...rest } = user;
+    return { ...rest, roles: roles.map((r) => r.role.code) } as MemberWithProfile;
   }
 
   /**

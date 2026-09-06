@@ -13,7 +13,9 @@ covers the management-style workflows those roles actually need:
 - **COACH**: their client roster and pending/active coaching requests
   (`/coach/clients`), and their own public coach-directory listing
   (`/coach/profile`).
-- **ADMIN**: the full member directory (`/admin/members`), and the gym
+- **ADMIN**: the full member directory (`/admin/members`) — including
+  granting/revoking roles per member (making someone a COACH is only
+  possible this way; there's no self-serve signup for it) — and the gym
   and exercise catalogs (`/admin/gyms`, `/admin/exercises`).
 
 Day-to-day logging (workouts, nutrition, meal/grocery plans) is left to

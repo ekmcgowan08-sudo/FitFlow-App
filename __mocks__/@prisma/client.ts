@@ -18,6 +18,7 @@
 export interface PrismaMockClient {
   user: {
     findUnique: jest.Mock;
+    findUniqueOrThrow: jest.Mock;
     findMany: jest.Mock;
     create: jest.Mock;
     delete: jest.Mock;
@@ -25,6 +26,10 @@ export interface PrismaMockClient {
   };
   role: {
     upsert: jest.Mock;
+  };
+  userRole: {
+    upsert: jest.Mock;
+    delete: jest.Mock;
   };
   refreshToken: {
     create: jest.Mock;
@@ -192,6 +197,7 @@ export interface PrismaMockClient {
 export const prismaMock: PrismaMockClient = {
   user: {
     findUnique: jest.fn(),
+    findUniqueOrThrow: jest.fn(),
     findMany: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
@@ -199,6 +205,10 @@ export const prismaMock: PrismaMockClient = {
   },
   role: {
     upsert: jest.fn(),
+  },
+  userRole: {
+    upsert: jest.fn(),
+    delete: jest.fn(),
   },
   refreshToken: {
     create: jest.fn(),

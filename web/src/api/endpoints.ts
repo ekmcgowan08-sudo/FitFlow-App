@@ -50,6 +50,17 @@ export function deleteUser(id: string) {
   return apiFetch<void>(`/v1/admin/users/${id}`, { method: 'DELETE' });
 }
 
+export function grantRole(userId: string, code: RoleCode) {
+  return apiFetch<{ id: string; email: string; roles: RoleCode[] }>(`/v1/admin/users/${userId}/roles`, {
+    method: 'POST',
+    body: { code },
+  });
+}
+
+export function revokeRole(userId: string, code: RoleCode) {
+  return apiFetch<void>(`/v1/admin/users/${userId}/roles/${code}`, { method: 'DELETE' });
+}
+
 // --- Streaks (self by default) ---------------------------------------------
 
 export function listMyStreaks() {

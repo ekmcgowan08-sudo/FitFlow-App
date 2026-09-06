@@ -18,7 +18,13 @@ A TypeScript/Express/Prisma/PostgreSQL API lives at the repo root:
   - **Identity & auth**: register/login/refresh/logout, `GET /v1/users/me`
     (the caller's own id/email/roles — roles are never in the JWT itself,
     see token.service.ts), member profile read/update, admin user
-    deletion.
+    deletion, and admin role grant/revoke (`POST`/`DELETE
+    /v1/admin/users/:id/roles[/:code]`) — registration always assigns
+    USER alone, so this is the only way any account becomes a COACH or
+    additional ADMIN. Guards against locking an account out entirely
+    (can't remove a user's last role) and against an admin locking
+    *themselves* out (can't remove their own ADMIN role — a different
+    admin still can).
   - **Extended profile**: app preferences, health/nutrition targets,
     allergies, medical notes (self/ADMIN only).
   - **Training**: the exercise catalog, coach/AI-authored workout plan

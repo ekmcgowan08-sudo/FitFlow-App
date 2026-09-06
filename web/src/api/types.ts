@@ -3,7 +3,7 @@
 // the API's `omit`/`select` usage means response shapes already exclude
 // anything sensitive (passwordHash, etc.) at the source.
 
-export type RoleCode = 'USER' | 'COACH' | 'ADMIN';
+export type RoleCode = 'USER' | 'COACH' | 'ADMIN' | 'SUBSCRIBER' | 'GYM_PARTNER';
 
 export interface AuthUser {
   id: string;
@@ -59,6 +59,7 @@ export interface Member {
   createdAt: string;
   profile: MemberProfile | null;
   goals: Goal[];
+  roles: RoleCode[];
 }
 
 export interface Gym {

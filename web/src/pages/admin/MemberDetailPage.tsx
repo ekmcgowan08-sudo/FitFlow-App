@@ -1,26 +1,34 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { deleteUser, getMember } from '../../api/endpoints';
+import { useAuth } from '../../auth/AuthContext';
+import { deleteUser, getMember, grantRole, revokeRole } from '../../api/endpoints';
 import { ApiError } from '../../api/client';
-import type { Member } from '../../api/types';
-import { Button, Card, ErrorBanner, PageHeader, Pill, Spinner } from '../../components/ui';
+import type { Member, RoleCode } from '../../api/types';
+import { Button, Card, ErrorBanner, PageHeader, Pill, Select, Spinner } from '../../components/ui';
+
+const ALL_ROLES: RoleCode[] = ['ADMIN', 'COACH', 'SUBSCRIBER', 'USER', 'GYM_PARTNER'];
 
 export function MemberDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const [member, setMember] = useState<Member | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [roleToAdd, setRoleToAdd] = useState<RoleCode>('COACH');
+  const [isSavingRole, setIsSavingRole] = useState(false);
 
-  useEffect(() => {
+  function refresh() {
     if (!id) return;
     setIsLoading(true);
     getMember(id)
       .then((res) => setMember(res.member))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load member.'))
       .finally(() => setIsLoading(false));
-  }, [id]);
+  }
+
+  useEffect(refresh, [id]);
 
   async function handleDelete() {
     if (!id || !window.confirm('Permanently delete this account? This cannot be undone.')) return;
@@ -34,8 +42,37 @@ export function MemberDetailPage() {
     }
   }
 
+  async function handleGrantRole() {
+    if (!id) return;
+    setIsSavingRole(true);
+    setError(null);
+    try {
+      const updated = await grantRole(id, roleToAdd);
+      setMember((prev) => (prev ? { ...prev, roles: updated.roles } : prev));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to grant role.');
+    } finally {
+      setIsSavingRole(false);
+    }
+  }
+
+  async function handleRevokeRole(code: RoleCode) {
+    if (!id) return;
+    if (!window.confirm(`Remove the ${code} role from this account?`)) return;
+    setError(null);
+    try {
+      await revokeRole(id, code);
+      setMember((prev) => (prev ? { ...prev, roles: prev.roles.filter((r) => r !== code) } : prev));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to remove role.');
+    }
+  }
+
   if (isLoading) return <Spinner />;
   if (!member) return <ErrorBanner message={error ?? 'Member not found.'} />;
+
+  const availableToGrant = ALL_ROLES.filter((r) => !member.roles.includes(r));
+  const isSelf = member.id === currentUser?.id;
 
   return (
     <div>
@@ -77,6 +114,47 @@ export function MemberDetailPage() {
                 </li>
               ))}
             </ul>
+          )}
+        </Card>
+
+        <Card className="p-5 sm:col-span-2">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">Roles</h2>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {member.roles.map((code) => {
+              // Mirrors the API's own self-lockout guard (can't remove
+              // your own ADMIN role) so this button isn't offered only
+              // to 403 when clicked — the API still enforces this
+              // regardless of what the UI shows.
+              const canRemove = !(isSelf && code === 'ADMIN') && member.roles.length > 1;
+              return (
+                <Pill key={code} tone={code === 'ADMIN' ? 'red' : code === 'COACH' ? 'green' : 'slate'}>
+                  {code}
+                  {canRemove && (
+                    <button
+                      className="ml-1 text-slate-500 hover:text-red-600"
+                      onClick={() => void handleRevokeRole(code)}
+                      aria-label={`Remove ${code} role`}
+                    >
+                      ×
+                    </button>
+                  )}
+                </Pill>
+              );
+            })}
+          </div>
+          {availableToGrant.length > 0 && (
+            <div className="flex gap-2">
+              <Select value={roleToAdd} onChange={(e) => setRoleToAdd(e.target.value as RoleCode)} className="max-w-xs">
+                {availableToGrant.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </Select>
+              <Button variant="secondary" onClick={() => void handleGrantRole()} disabled={isSavingRole}>
+                {isSavingRole ? 'Adding…' : 'Add role'}
+              </Button>
+            </div>
           )}
         </Card>
       </div>

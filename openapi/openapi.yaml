@@ -2113,6 +2113,76 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/admin/users/{id}/roles:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [admin]
+      summary: Grant a role to a user (ADMIN only)
+      description: >-
+        Idempotent — granting a role the user already has succeeds and
+        returns their current role list unchanged. This (and the DELETE
+        below) is the only way any account other than USER ever gets a
+        role: registration always assigns USER alone, and there is no
+        self-serve way to add one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, enum: [ADMIN, COACH, SUBSCRIBER, USER, GYM_PARTNER] }
+      responses:
+        "200":
+          description: The user's updated id/email/role list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  email: { type: string, format: email }
+                  roles:
+                    type: array
+                    items: { type: string, enum: [ADMIN, COACH, SUBSCRIBER, USER, GYM_PARTNER] }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/admin/users/{id}/roles/{code}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: code
+        in: path
+        required: true
+        schema: { type: string, enum: [ADMIN, COACH, SUBSCRIBER, USER, GYM_PARTNER] }
+    delete:
+      tags: [admin]
+      summary: Revoke a role from a user (ADMIN only)
+      description: >-
+        Refuses to remove a user's last remaining role (an account with
+        zero roles can't authenticate at all — see auth.middleware.ts —
+        which is a confusing way to end up effectively suspended; use
+        the user's `status` field to deliberately disable an account
+        instead), and refuses to let an ADMIN remove their own ADMIN
+        role (self-lockout prevention — a different admin can still do
+        it).
+      responses:
+        "204": { description: Revoked. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/users/me:
     get:
       tags: [users]
@@ -2546,6 +2616,9 @@ components:
               category: { type: string }
               title: { type: string }
               status: { type: string }
+        roles:
+          type: array
+          items: { type: string, enum: [ADMIN, COACH, SUBSCRIBER, USER, GYM_PARTNER] }
 
     WorkoutSet:
       type: object

@@ -100,6 +100,7 @@ describe("member routes", () => {
         id: userId,
         profile: { firstName: "Jamie" },
         goals: [],
+        roles: [{ role: { code: "USER" } }],
       });
 
       const res = await request(app)
@@ -112,6 +113,10 @@ describe("member routes", () => {
         omit: { passwordHash: true },
       });
       expect(res.body.member.id).toBe(userId);
+      // roles are flattened from the raw join-table rows into a plain
+      // array — the admin dashboard's member detail page needs this to
+      // show/manage a member's roles.
+      expect(res.body.member.roles).toEqual(["USER"]);
     });
 
     it("forbids reading a different member's profile without an elevated role", async () => {
@@ -134,6 +139,7 @@ describe("member routes", () => {
         id: clientId,
         profile: { firstName: "Client" },
         goals: [],
+        roles: [{ role: { code: "USER" } }],
       });
 
       const res = await request(app)
