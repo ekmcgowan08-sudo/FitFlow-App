@@ -9,7 +9,8 @@ Three roles exist in the API (`USER`, `COACH`, `ADMIN`); this dashboard
 covers the management-style workflows those roles actually need:
 
 - **Every signed-in account**: an overview of their own streaks and
-  active goals (`/`).
+  active goals (`/`), plus a read-only history of their workout
+  (`/workout-logs`) and nutrition (`/nutrition-logs`) logs.
 - **COACH**: their client roster and pending/active coaching requests
   (`/coach/clients`), and their own public coach-directory listing
   (`/coach/profile`).
@@ -18,9 +19,12 @@ covers the management-style workflows those roles actually need:
   possible this way; there's no self-serve signup for it) — and the gym
   and exercise catalogs (`/admin/gyms`, `/admin/exercises`).
 
-Day-to-day logging (workouts, nutrition, meal/grocery plans) is left to
+Day-to-day *entry* (workouts, nutrition, meal/grocery plans) is left to
 a mobile client — those flows are built for quick, frequent, on-the-go
 entry, which a desktop-oriented dashboard isn't the right shape for.
+The dashboard's own workout/nutrition log pages are read-only history
+(with delete, for correcting a bad mobile entry) rather than a second
+place to create one.
 
 ## Running locally
 

@@ -62,6 +62,51 @@ export interface Member {
   roles: RoleCode[];
 }
 
+export type WorkoutCategory = 'STRENGTH' | 'CARDIO' | 'MOBILITY' | 'SPORT' | 'RECOVERY';
+
+export interface WorkoutSet {
+  id: string;
+  setNumber: number;
+  reps?: number | null;
+  weightKg?: number | null;
+  durationSeconds?: number | null;
+  completed: boolean;
+}
+
+export interface WorkoutSessionExercise {
+  id: string;
+  exercise: { id: string; name: string; category: string };
+  sortOrder: number;
+  noteText?: string | null;
+  sets: WorkoutSet[];
+}
+
+export interface WorkoutLog {
+  id: string;
+  userId: string;
+  startedAt: string;
+  completedAt?: string | null;
+  status: string;
+  caloriesBurned?: number | null;
+  sessionExercises: WorkoutSessionExercise[];
+}
+
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'drink';
+
+export interface NutritionLog {
+  id: string;
+  userId: string;
+  loggedAt: string;
+  mealType: MealType;
+  itemName: string;
+  servingDescription?: string | null;
+  calories?: number | null;
+  proteinGrams?: number | null;
+  carbsGrams?: number | null;
+  fatGrams?: number | null;
+  waterOz?: number | null;
+}
+
 export interface Gym {
   id: string;
   name: string;

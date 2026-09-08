@@ -20,6 +20,8 @@ function navSectionsFor(roles: string[]): NavSection[] {
         { to: '/', label: 'Overview', end: true },
         { to: '/profile', label: 'My Profile' },
         { to: '/goals', label: 'My Goals' },
+        { to: '/workout-logs', label: 'Workout Logs' },
+        { to: '/nutrition-logs', label: 'Nutrition Logs' },
         { to: '/my-coaches', label: 'My Coaches' },
         { to: '/find-a-coach', label: 'Find a Coach' },
       ],

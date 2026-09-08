@@ -121,9 +121,10 @@ npm test
 
 `web/` is a separate React + TypeScript + Vite app — the admin/coach
 management UI for this API (member directory, gym and exercise catalog
-management, a coach's client roster and public profile). See
+management, a coach's client roster and public profile, plus every
+member's own read-only workout/nutrition log history). See
 `web/README.md` for what it covers, its auth model, and how to run or
 build it; it's a distinct `npm` project with its own dependencies and
-CI job, not part of the backend's `npm` workspace. Day-to-day logging
-(workouts, meals, etc.) is left to a mobile client — see that README for
-why.
+CI job, not part of the backend's `npm` workspace. Day-to-day log
+*entry* (workouts, meals, etc.) is left to a mobile client — see that
+README for why.

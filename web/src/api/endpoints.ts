@@ -12,9 +12,11 @@ import type {
   Goal,
   Gym,
   Member,
+  NutritionLog,
   RoleCode,
   Streak,
   TokenPair,
+  WorkoutLog,
 } from './types';
 
 // --- Auth --------------------------------------------------------------
@@ -198,6 +200,30 @@ export function addCoachSpecialty(userId: string, specialty: string) {
 
 export function deleteCoachSpecialty(userId: string, specialtyId: string) {
   return apiFetch<void>(`/v1/coach-profiles/${userId}/specialties/${specialtyId}`, { method: 'DELETE' });
+}
+
+// --- Workout logs (self by default; ADMIN/COACH-with-assignment can pass memberId) ---
+
+export function listWorkoutLogs(memberId: string, page = 1, pageSize = 20) {
+  return apiFetch<{ items: WorkoutLog[]; page: number; pageSize: number; total: number }>('/v1/workout-logs', {
+    query: { memberId, page, pageSize },
+  });
+}
+
+export function deleteWorkoutLog(id: string) {
+  return apiFetch<void>(`/v1/workout-logs/${id}`, { method: 'DELETE' });
+}
+
+// --- Nutrition logs (self by default; ADMIN/COACH-with-assignment can pass userId) ---
+
+export function listNutritionLogs(userId: string, page = 1, pageSize = 20) {
+  return apiFetch<{ logs: NutritionLog[]; page: number; pageSize: number; total: number }>('/v1/nutrition-logs', {
+    query: { userId, page, pageSize },
+  });
+}
+
+export function deleteNutritionLog(id: string) {
+  return apiFetch<void>(`/v1/nutrition-logs/${id}`, { method: 'DELETE' });
 }
 
 // --- Self-service member profile -------------------------------------------

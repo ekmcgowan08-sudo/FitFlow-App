@@ -35,8 +35,10 @@ failing spec interactively.
 Login/logout, role-based navigation visibility, admin gym CRUD, the
 full coach-request → client-accept relationship flow (spanning two
 separate logged-in sessions, which no single-component test can catch
-a mismatch in), and member profile/goal self-service. Not covered:
-every CRUD screen (exercises, member detail, coach profile/specialties)
-— those share the same patterns already exercised above and are lower
-value to duplicate here; add a spec for one if it starts shipping real
-bugs the pattern doesn't already catch.
+a mismatch in), member profile/goal self-service, admin role
+grant/revoke, and the workout/nutrition log history views (seeded via
+direct API calls, since day-to-day log entry is a mobile-client flow —
+see `web/README.md`). Not covered: every CRUD screen (exercises, coach
+profile/specialties) — those share the same patterns already exercised
+above and are lower value to duplicate here; add a spec for one if it
+starts shipping real bugs the pattern doesn't already catch.

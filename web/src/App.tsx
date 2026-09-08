@@ -6,6 +6,8 @@ import { LoginPage } from './pages/LoginPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { MyProfilePage } from './pages/MyProfilePage';
 import { GoalsPage } from './pages/GoalsPage';
+import { WorkoutLogsPage } from './pages/WorkoutLogsPage';
+import { NutritionLogsPage } from './pages/NutritionLogsPage';
 import { MyCoachesPage } from './pages/MyCoachesPage';
 import { FindCoachPage } from './pages/FindCoachPage';
 import { MembersPage } from './pages/admin/MembersPage';
@@ -26,6 +28,8 @@ export function App() {
             <Route path="/" element={<OverviewPage />} />
             <Route path="/profile" element={<MyProfilePage />} />
             <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/workout-logs" element={<WorkoutLogsPage />} />
+            <Route path="/nutrition-logs" element={<NutritionLogsPage />} />
             <Route path="/my-coaches" element={<MyCoachesPage />} />
             <Route path="/find-a-coach" element={<FindCoachPage />} />
 
