@@ -2,6 +2,11 @@
 
 All-in-one fitness, lifestyle, mobile-phone, and smartwatch app.
 
+Picking this up fresh, or getting ready to deploy it for real? Start
+with `docs/LAUNCH_READINESS.md` — what's built, what's still needed
+before a real production deploy, and what's been deliberately deferred
+(and why).
+
 ## Backend API
 
 A TypeScript/Express/Prisma/PostgreSQL API lives at the repo root:
