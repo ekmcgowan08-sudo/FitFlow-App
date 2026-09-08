@@ -32,13 +32,14 @@ failing spec interactively.
 
 ## What's covered, and what isn't
 
-Login/logout, role-based navigation visibility, admin gym CRUD, the
-full coach-request → client-accept relationship flow (spanning two
-separate logged-in sessions, which no single-component test can catch
-a mismatch in), member profile/goal self-service, admin role
-grant/revoke, and the workout/nutrition log history views (seeded via
-direct API calls, since day-to-day log entry is a mobile-client flow —
-see `web/README.md`). Not covered: every CRUD screen (exercises, coach
-profile/specialties) — those share the same patterns already exercised
-above and are lower value to duplicate here; add a spec for one if it
-starts shipping real bugs the pattern doesn't already catch.
+Login/logout, role-based navigation visibility, admin gym and exercise
+catalog CRUD, the full coach-request → client-accept relationship flow
+(spanning two separate logged-in sessions, which no single-component
+test can catch a mismatch in), a coach's public profile and specialty
+list, member profile/goal self-service, admin role grant/revoke, and
+the workout/nutrition log history views (seeded via direct API calls,
+since day-to-day log entry is a mobile-client flow — see
+`web/README.md`). Not covered: member detail page (shares the same
+profile/goal-rendering and role-pill patterns already exercised
+elsewhere) — add a spec for it if it starts shipping real bugs the
+pattern doesn't already catch.
