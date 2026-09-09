@@ -45,8 +45,17 @@ services:
     # existing one up to date) before starting the server. This is the
     # production-safe equivalent of `prisma db push` — it never infers or
     # applies unreviewed schema changes, only the SQL already checked in.
+    #
+    # `exec` on the final command matters: without it, `node` runs as a
+    # *child* of this `sh`, so `sh` — not `node` — is PID 1 and the one
+    # that receives `docker stop`'s SIGTERM. `sh` doesn't forward that
+    # signal to a child it didn't exec into, so `node` would be silently
+    # orphaned rather than shut down — server.ts's graceful-shutdown
+    # handler (SIGTERM -> drain connections -> disconnect Prisma) would
+    # simply never run under `docker compose`. `exec` replaces the shell
+    # process with `node` in place, so `node` becomes PID 1 itself.
     command: >
-      sh -c "npx prisma migrate deploy --schema prisma/schema.prisma && node dist/src/server.js"
+      sh -c "npx prisma migrate deploy --schema prisma/schema.prisma && exec node dist/src/server.js"
 
   web:
     build:
