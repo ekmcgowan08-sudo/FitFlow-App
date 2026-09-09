@@ -84,19 +84,15 @@ Each of these was found and consciously left rather than missed:
   for a display position. Accepted as a cosmetic edge case rather than
   adding transactional locking for a field that's purely a display
   hint, not an invariant.
-- **`react-router-dom` is on v6, not v7** (`web/package.json`). `npm
-  audit` flags v6 for a moderate open-redirect/SSR-deserialization CVE;
-  this app does no SSR (ruling out one half of it) and its one
-  `navigate()`/`<Link>` call site uses internally-generated state, not
-  raw attacker-controlled URL text (making the other half's
-  precondition unclear). A v7 migration is a real but non-urgent
-  follow-up — do it as its own dedicated change with real regression
-  testing, not a drive-by version bump.
-- **`vite`/`esbuild` moderate `npm audit` finding** (dev-server-only
-  request-forwarding issue) — doesn't affect the built production
-  bundle, only `npm run dev`. Same reasoning as above: real, but a
-  major-version bump deserves its own testing pass rather than being
-  forced in as a side effect of unrelated work.
+- **`vite`/`esbuild` moderate/high `npm audit` finding** (a dev-server
+  request-forwarding/path-traversal issue) — doesn't affect the built
+  production bundle (a static file tree served by nginx), only `npm run
+  dev` on a contributor's own machine. Real, but the fix is a Vite 5→8
+  major-version bump with its own breaking changes (already true of the
+  `react-router-dom` v6→v7 bump this project went through — see its
+  commit for the verification approach that migration deserves too);
+  do it as its own dedicated change with real regression testing rather
+  than a drive-by version bump.
 
 ## Test coverage gaps, by design
 
