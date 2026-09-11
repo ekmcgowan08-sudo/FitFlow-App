@@ -2,8 +2,10 @@
 // credential stuffing and refresh-token replay: login and refresh.
 
 import rateLimit, { Options, ipKeyGenerator } from "express-rate-limit";
+import { RedisStore } from "rate-limit-redis";
 import { Request, Response, NextFunction } from "express";
 import { TooManyRequestsError } from "../lib/errors";
+import { redisClient } from "../lib/redis-client";
 
 // Shared handler: every limiter forwards to the central error handler
 // instead of writing its own response, so 429s have the same JSON shape
@@ -12,6 +14,28 @@ function forwardAsAppError(retryAfterSeconds: number, message: string) {
   return (_req: Request, _res: Response, next: NextFunction) => {
     next(new TooManyRequestsError(message, retryAfterSeconds));
   };
+}
+
+// With REDIS_URL unset, buildStore() returns undefined and each limiter
+// falls back to express-rate-limit's own in-memory Store, exactly as
+// before this option existed. That default only breaks down once more
+// than one API process needs to share a window (see lib/redis-client.ts),
+// so it's the right choice until a deployment actually scales
+// horizontally.
+//
+// A fresh RedisStore instance per limiter, not one shared instance,
+// because express-rate-limit forbids reusing a single Store across
+// multiple limiters (ERR_ERL_STORE_REUSE) — each instance tracks its
+// own hit-count cache internally, so sharing one would corrupt all of
+// them. `prefix` keeps each limiter's keys visibly separated in Redis
+// on top of that (e.g. `redis-cli KEYS 'rl:login:*'`).
+function buildStore(prefix: string) {
+  const client = redisClient;
+  if (!client) return undefined;
+  return new RedisStore({
+    prefix: `rl:${prefix}:`,
+    sendCommand: (...args: string[]) => client.call(...(args as [string, ...string[]])) as Promise<never>,
+  });
 }
 
 const baseOptions: Partial<Options> = {
@@ -29,6 +53,7 @@ const baseOptions: Partial<Options> = {
  */
 export const loginRateLimiter = rateLimit({
   ...baseOptions,
+  store: buildStore("login"),
   windowMs: 15 * 60 * 1000,
   limit: 10,
   keyGenerator: (req: Request) => {
@@ -50,6 +75,7 @@ export const loginRateLimiter = rateLimit({
  */
 export const refreshRateLimiter = rateLimit({
   ...baseOptions,
+  store: buildStore("refresh"),
   windowMs: 15 * 60 * 1000,
   limit: 30,
   keyGenerator: (req: Request) => `refresh:${ipKeyGenerator(req.ip ?? "")}`,
@@ -62,6 +88,7 @@ export const refreshRateLimiter = rateLimit({
  */
 export const registerRateLimiter = rateLimit({
   ...baseOptions,
+  store: buildStore("register"),
   windowMs: 60 * 60 * 1000,
   limit: 5,
   keyGenerator: (req: Request) => `register:${ipKeyGenerator(req.ip ?? "")}`,

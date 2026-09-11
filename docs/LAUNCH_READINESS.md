@@ -60,11 +60,17 @@ ephemeral Postgres service. Concretely still needed:
 5. **TLS/reverse proxy**: neither the API nor the dashboard's nginx
    config terminates TLS itself; both expect to sit behind a
    load balancer/reverse proxy that does.
-6. **Rate limiting**: `src/rbac/rate-limit.middleware.ts` uses
-   `express-rate-limit`'s default in-memory store — fine for a single
-   API instance, but resets on every restart/deploy and doesn't
-   coordinate across replicas. Move to a shared store (Redis) before
-   running more than one API instance behind a load balancer.
+6. **Rate limiting**: set `REDIS_URL` before running more than one API
+   instance behind a load balancer. `src/rbac/rate-limit.middleware.ts`
+   defaults to `express-rate-limit`'s in-memory store, which works fine
+   for a single instance but can't coordinate counts across replicas —
+   each would enforce its own separate window, silently multiplying the
+   effective limit by the replica count. Setting `REDIS_URL` (see
+   `.env.example`, `src/lib/redis-client.ts`) switches every limiter to
+   a shared Redis-backed store instead, verified against a real Redis
+   instance: the count persists across a process restart and a second
+   "replica" (a second process pointed at the same Redis) correctly
+   continues the same window rather than starting its own.
 
 ## Known, deliberately deferred items
 
@@ -93,6 +99,17 @@ Each of these was found and consciously left rather than missed:
   commit for the verification approach that migration deserves too);
   do it as its own dedicated change with real regression testing rather
   than a drive-by version bump.
+- **`deepmerge-ts` high `npm audit` finding via `@prisma/config`**
+  (root `package.json`, not `web/`) — a stack-exhaustion issue in a
+  transitive dependency of the `prisma` CLI's own config-loading, not
+  `@prisma/client` (what the running API actually imports at runtime).
+  Only reachable by whatever object graph the CLI itself constructs
+  from this repo's own `prisma/schema.prisma` and config — not
+  attacker-controlled input in this project's build or dev pipeline —
+  so low real-world risk, but `npm audit fix --force`'s suggested
+  "fix" is a *downgrade* to an older `prisma`, which isn't a real fix.
+  Needs a `prisma` release that bumps its own `deepmerge-ts` past 8.0.0;
+  check for one before forcing anything.
 
 ## Test coverage gaps, by design
 

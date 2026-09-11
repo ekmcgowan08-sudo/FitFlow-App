@@ -4,6 +4,7 @@
 import 'reflect-metadata'; // required by rbac/rbac.decorator.ts's @Roles decorator
 import { createApp } from './app';
 import { prisma } from './lib/prisma-client';
+import { redisClient } from './lib/redis-client';
 
 const PORT = Number(process.env.PORT ?? 3000);
 
@@ -32,6 +33,7 @@ function shutdown(signal: NodeJS.Signals) {
       console.error('Error while closing HTTP server:', err);
     }
     await prisma.$disconnect();
+    await redisClient?.quit();
     process.exit(err ? 1 : 0);
   });
 
