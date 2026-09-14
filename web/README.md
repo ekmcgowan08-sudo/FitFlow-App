@@ -83,6 +83,8 @@ docker build --build-arg VITE_API_BASE_URL=https://api.example.com -t fitflow-da
 
 Multi-stage: builds the static bundle with Node, serves it with nginx
 (`nginx.conf` — includes the SPA fallback route so a hard refresh on a
-client-side route like `/admin/gyms` doesn't 404). See the repo root's
+client-side route like `/admin/gyms` doesn't 404, and `security-headers.conf`
+sends the equivalent of the API's `helmet()` headers — CSP, X-Frame-Options,
+etc. — for the browser-facing side). See the repo root's
 `docker-compose.yml` for a wired-up example (`web` service) alongside
 the API and Postgres.
