@@ -279,6 +279,7 @@ model UserMedicalNote {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("user_medical_notes")
 }
 
@@ -324,6 +325,11 @@ model CoachAssignment {
   client User @relation("ClientToCoach", fields: [clientUserId], references: [id], onDelete: Cascade)
 
   @@id([coachUserId, clientUserId])
+  // The composite PK's index only serves lookups on coachUserId (its
+  // leading column) or on both columns together — GET /coach/coaches
+  // (coach-assignment.routes.ts) filters by clientUserId alone, which
+  // that index can't serve.
+  @@index([clientUserId])
   @@map("coach_assignments")
 }
 
@@ -403,6 +409,7 @@ model MealPlanMeal {
 
   mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
 
+  @@index([mealPlanId])
   @@map("meal_plan_meals")
 }
 
@@ -430,6 +437,7 @@ model GroceryPlanItem {
 
   groceryPlan GroceryPlan @relation(fields: [groceryPlanId], references: [id], onDelete: Cascade)
 
+  @@index([groceryPlanId])
   @@map("grocery_plan_items")
 }
 
@@ -565,6 +573,7 @@ model WorkoutPlanSessionExercise {
   planSession WorkoutPlanSession @relation(fields: [planSessionId], references: [id], onDelete: Cascade)
   exercise    Exercise           @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
 
+  @@index([planSessionId])
   @@map("workout_plan_session_exercises")
 }
 
@@ -598,6 +607,7 @@ model WorkoutSessionExercise {
   exercise       Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
   sets           WorkoutSet[]
 
+  @@index([workoutSessionId])
   @@map("workout_session_exercises")
 }
 
@@ -666,6 +676,7 @@ model Badge {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, unlockedAt(sort: Desc)])
   @@map("badges")
 }
 
@@ -678,6 +689,7 @@ model Achievement {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("achievements")
 }
 
