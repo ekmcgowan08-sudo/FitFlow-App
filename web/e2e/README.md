@@ -30,6 +30,23 @@ DATABASE_URL=postgresql://fitflow:fitflow_dev_password@localhost:5432/fitflow?sc
 `npm run test:e2e:ui` opens Playwright's UI mode for debugging a
 failing spec interactively.
 
+## A known occasional flake, and why CI retries once
+
+`coaching-flow.spec.ts` has occasionally failed on its first attempt —
+the client-side member's "My Coaches" row for a just-created assignment
+isn't there yet within the assertion's timeout, right after switching
+accounts (sign out as the coach, sign in as the member). Investigated
+multiple times (isolated re-runs, a react-router-dom v7 migration this
+looked suspicious for): it isn't a code defect in the coaching flow
+itself — repeated standalone runs pass consistently, and the row always
+does appear on retry. It reads as a timing race under CI's shared,
+sometimes-loaded runner rather than anything wrong with the app, which
+is exactly the class of failure `playwright.config.ts`'s `retries:
+process.env.CI ? 1 : 0` exists to absorb — a real bug wouldn't
+self-resolve on an identical retry. If this starts failing on *both*
+attempts, that's a different, more serious signal worth investigating
+properly rather than re-running past.
+
 ## What's covered, and what isn't
 
 Login/logout, role-based navigation visibility, admin gym and exercise

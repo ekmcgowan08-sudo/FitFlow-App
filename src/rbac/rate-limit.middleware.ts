@@ -84,13 +84,25 @@ export const refreshRateLimiter = rateLimit({
 
 /**
  * registerRateLimiter — cheaper safeguard against automated bulk account
- * creation. 5 attempts per hour per IP.
+ * creation. 5 attempts per hour per IP by default.
+ *
+ * Configurable via REGISTER_RATE_LIMIT_MAX rather than hardcoded: every
+ * caller of this API shares one IP in a few completely legitimate,
+ * non-abusive situations — a NAT'd office network, and (the one that
+ * actually bit this project) an E2E suite that registers several fresh
+ * test accounts from a single CI runner in one run, well within normal
+ * behavior but indistinguishable from the abuse pattern this limiter
+ * exists to catch if the threshold is fixed at production's value. CI
+ * sets this higher (.github/workflows/ci.yml); production is unaffected
+ * by leaving it unset.
  */
+const REGISTER_RATE_LIMIT_MAX = Number(process.env.REGISTER_RATE_LIMIT_MAX) || 5;
+
 export const registerRateLimiter = rateLimit({
   ...baseOptions,
   store: buildStore("register"),
   windowMs: 60 * 60 * 1000,
-  limit: 5,
+  limit: REGISTER_RATE_LIMIT_MAX,
   keyGenerator: (req: Request) => `register:${ipKeyGenerator(req.ip ?? "")}`,
   handler: forwardAsAppError(60 * 60, "Too many registration attempts. Please try again later."),
 });

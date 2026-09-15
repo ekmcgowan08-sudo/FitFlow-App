@@ -61,4 +61,69 @@ describe("rate-limit middleware", () => {
       expect(blocked.body.error.message).toMatch(/too many token refresh attempts/i);
     });
   });
+
+  describe("registerRateLimiter (5 requests / hour by default, keyed by ip)", () => {
+    const originalMax = process.env.REGISTER_RATE_LIMIT_MAX;
+
+    afterEach(() => {
+      if (originalMax === undefined) {
+        delete process.env.REGISTER_RATE_LIMIT_MAX;
+      } else {
+        process.env.REGISTER_RATE_LIMIT_MAX = originalMax;
+      }
+      jest.resetModules();
+    });
+
+    // jest.resetModules() gives rate-limit.middleware (and everything it
+    // imports, including lib/errors) a brand-new module instance — so
+    // errorHandler must come from that SAME fresh require, not the
+    // top-level import above. Otherwise the freshly-constructed
+    // TooManyRequestsError fails `instanceof AppError` against the
+    // *original* AppError class the top-level errorHandler checks
+    // against, and every request 500s instead of 429ing.
+    function buildFreshProbeApp(limiter: RequestHandler, freshErrorHandler: RequestHandler) {
+      const app = express();
+      app.use(express.json());
+      app.post("/probe", limiter, (_req, res) => res.status(200).json({ ok: true }));
+      app.use(freshErrorHandler);
+      return app;
+    }
+
+    it("allows the first 5 requests and blocks the 6th with 429 when REGISTER_RATE_LIMIT_MAX is unset", async () => {
+      delete process.env.REGISTER_RATE_LIMIT_MAX;
+      jest.resetModules();
+      const { registerRateLimiter: freshLimiter } = require("../src/rbac/rate-limit.middleware");
+      const { errorHandler: freshErrorHandler } = require("../src/lib/errors");
+      const app = buildFreshProbeApp(freshLimiter, freshErrorHandler);
+
+      for (let i = 0; i < 5; i++) {
+        const res = await request(app).post("/probe").send({});
+        expect(res.status).toBe(200);
+      }
+
+      const blocked = await request(app).post("/probe").send({});
+      expect(blocked.status).toBe(429);
+      expect(blocked.body.error.message).toMatch(/too many registration attempts/i);
+    });
+
+    // This is exactly the env var that fixes CI: the E2E suite registers
+    // more than 5 fresh test accounts from the single runner IP in one
+    // run, which would otherwise trip the production-tuned default on
+    // every single run regardless of flakiness — see ci.yml's e2e job.
+    it("respects a raised REGISTER_RATE_LIMIT_MAX", async () => {
+      process.env.REGISTER_RATE_LIMIT_MAX = "8";
+      jest.resetModules();
+      const { registerRateLimiter: freshLimiter } = require("../src/rbac/rate-limit.middleware");
+      const { errorHandler: freshErrorHandler } = require("../src/lib/errors");
+      const app = buildFreshProbeApp(freshLimiter, freshErrorHandler);
+
+      for (let i = 0; i < 8; i++) {
+        const res = await request(app).post("/probe").send({});
+        expect(res.status).toBe(200);
+      }
+
+      const blocked = await request(app).post("/probe").send({});
+      expect(blocked.status).toBe(429);
+    });
+  });
 });
