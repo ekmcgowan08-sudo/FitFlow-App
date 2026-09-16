@@ -3,11 +3,23 @@ import { useAuth } from './AuthContext';
 import type { RoleCode } from '../api/types';
 
 export function RequireAuth() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, wasSignOutIntent } = useAuth();
   const location = useLocation();
 
   if (isLoading) return <FullPageSpinner />;
-  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!user) {
+    // Two different reasons land here, and only one of them should
+    // carry "remember where I was": an unauthenticated visit to a
+    // protected URL (session expired, a bookmarked deep link, ...)
+    // genuinely wants to return to `location` after logging in. An
+    // explicit Sign-out click does not — and worse, that `from` state
+    // lives on the browser's /login history *entry*, not on this one
+    // render, so without this check it would silently survive to
+    // redirect whoever logs in *next* on this tab (a different person,
+    // even) back to a page that has nothing to do with their session.
+    const state = wasSignOutIntent() ? undefined : { from: location };
+    return <Navigate to="/login" state={state} replace />;
+  }
   return <Outlet />;
 }
 
