@@ -71,15 +71,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     signOutIntentRef.current = true;
     const session = loadSession();
+    // Clear the LOCAL session synchronously, before the network call
+    // below - not after it. Confirmed with a standalone Playwright
+    // repro: this function is a fire-and-forget promise at every call
+    // site (`onClick={() => void logout()}`), and the very next thing a
+    // caller typically does is navigate (e.g. an E2E test's login()
+    // helper calling page.goto('/login') right after clicking Sign
+    // out). That navigation actively aborts this function's in-flight
+    // apiLogout() fetch (net::ERR_ABORTED) - and if the abort's rejection
+    // doesn't get processed before the navigation finishes tearing down
+    // this page's JS context, clearSession() below would simply never
+    // run, leaving the old tokens in localStorage. A subsequent load of
+    // any page then finds a still-"valid" session and logs the
+    // signed-out user right back in. Clearing state before the await
+    // removes the race entirely rather than narrowing its window: there
+    // is no async gap left for a navigation to land in between the
+    // click and the local session actually being cleared.
+    clearSession();
+    setUser(null);
+    setRoles([]);
     if (session) {
       // Best-effort: an already-expired/invalid refresh token shouldn't
       // block clearing the local session (revokeRefreshToken on the API
       // side is deliberately lenient about this too — see auth.routes.ts).
       await apiLogout(session.refreshToken).catch(() => undefined);
     }
-    clearSession();
-    setUser(null);
-    setRoles([]);
   }, []);
 
   const hasRole = useCallback((...check: RoleCode[]) => check.some((r) => roles.includes(r)), [roles]);
