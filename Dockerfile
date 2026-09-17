@@ -52,4 +52,13 @@ USER node
 
 EXPOSE 3000
 
+# No curl/wget on node:22-slim, so the probe itself is a one-line Node
+# script against the same /healthz app.ts already exposes for exactly
+# this purpose — lets `docker compose`'s `depends_on: condition:
+# service_healthy` (see docker-compose.yml) and any orchestrator that
+# reads container health (e.g. an ECS/Swarm restart policy) tell "up"
+# from "actually able to serve a request" apart.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/healthz',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+
 CMD ["node", "dist/src/server.js"]

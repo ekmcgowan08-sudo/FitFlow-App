@@ -35,3 +35,10 @@ COPY security-headers.conf /etc/nginx/security-headers.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
+
+# wget ships with nginx:alpine's busybox — no extra install needed. Lets
+# `docker compose`/an orchestrator distinguish "container started" from
+# "nginx is actually serving the SPA," the same signal the api image's
+# own HEALTHCHECK (Dockerfile) provides for /healthz.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -q -O /dev/null http://localhost/ || exit 1
