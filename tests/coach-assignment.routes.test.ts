@@ -54,6 +54,7 @@ describe("coach-assignment routes", () => {
       expect(prismaMock.coachAssignment.findMany).toHaveBeenCalledWith({
         where: { coachUserId: COACH_ID },
         include: { client: { omit: { passwordHash: true } } },
+        take: 500,
       });
     });
 
@@ -79,6 +80,7 @@ describe("coach-assignment routes", () => {
       expect(prismaMock.coachAssignment.findMany).toHaveBeenCalledWith({
         where: { coachUserId: COACH_ID },
         include: { client: { omit: { passwordHash: true } } },
+        take: 500,
       });
     });
   });
@@ -96,6 +98,7 @@ describe("coach-assignment routes", () => {
       expect(prismaMock.coachAssignment.findMany).toHaveBeenCalledWith({
         where: { clientUserId: CLIENT_ID },
         include: { coach: { omit: { passwordHash: true } } },
+        take: 500,
       });
     });
 

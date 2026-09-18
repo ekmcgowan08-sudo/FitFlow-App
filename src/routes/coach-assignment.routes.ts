@@ -41,9 +41,18 @@ router.get(
       }
       const targetCoachId = isAdmin(authedReq) && coachUserId ? coachUserId : authedReq.user.id;
 
+      // Unlike /v1/members (paginated - see member.routes.ts), this has
+      // no page/pageSize params: a coach's roster is a bounded, personal
+      // list a coach workflow expects to see in full, not a directory to
+      // browse a page at a time. `take` here is a defensive ceiling, not
+      // real pagination - it exists so a single unusually successful
+      // coach can't turn this into an unbounded response, not to hide
+      // data past it. If any real roster approaches this size, that's
+      // the signal to add actual pagination + a "load more" UI here.
       const assignments = await prisma.coachAssignment.findMany({
         where: { coachUserId: targetCoachId },
         include: { client: { omit: { passwordHash: true } } },
+        take: 500,
       });
 
       res.json({ assignments });
@@ -65,9 +74,12 @@ router.get('/coach/coaches', validate({ query: listCoachesQuerySchema }), async 
     }
     const targetClientId = isAdmin(authedReq) && clientUserId ? clientUserId : authedReq.user.id;
 
+    // A member's own coach list, not a directory - naturally small.
+    // Same defensive `take` ceiling as /coach/clients above.
     const assignments = await prisma.coachAssignment.findMany({
       where: { clientUserId: targetClientId },
       include: { coach: { omit: { passwordHash: true } } },
+      take: 500,
     });
 
     res.json({ assignments });
