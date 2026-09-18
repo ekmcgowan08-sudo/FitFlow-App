@@ -45,6 +45,24 @@ The API must have this dashboard's origin in its own
 is the default on both sides, so a fresh checkout of both projects works
 together with no config changes.
 
+## Testing
+
+Two layers, covering different things:
+
+- `npm test` (Vitest + React Testing Library) — fast, isolated unit
+  tests of component/hook logic that don't need a real browser or
+  network. Small today (`src/auth/AuthContext.test.tsx`, covering the
+  logout state machine — see that file's comments for the specific
+  regression it guards against), grown as more logic like it
+  accumulates.
+- `npm run test:e2e` (Playwright, against a real API + Postgres) — full
+  user flows through a real browser. See `e2e/README.md` for what's
+  covered and how to run it locally.
+
+Run unit tests before E2E when debugging a failure: they're seconds,
+not minutes, and narrow down whether a bug is in the logic itself or
+only surfaces through a full browser flow.
+
 ## Auth model
 
 Bearer tokens (access + refresh), matching the API's design — there is

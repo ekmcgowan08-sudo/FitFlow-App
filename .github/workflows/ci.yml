@@ -94,6 +94,10 @@ jobs:
         working-directory: web
         run: npm run typecheck:e2e
 
+      - name: Run unit tests
+        working-directory: web
+        run: npm test
+
       - name: Build
         working-directory: web
         run: npm run build
