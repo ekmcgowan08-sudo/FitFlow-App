@@ -49,3 +49,24 @@ function shutdown(signal: NodeJS.Signals) {
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+
+// Without these, Node's own default behavior already exits the process
+// on either event (has since Node 15 for unhandled rejections) - so
+// this isn't what keeps the process alive or crashing. What it's for is
+// the log line: a bare, un-prefixed stack trace dump from Node's default
+// handler is easy to miss in a log aggregator built around greppable
+// prefixes (see the `[CODE]`-tagged errors in lib/errors.ts). A crash
+// exits immediately rather than attempting the same drain as `shutdown`
+// above - continuing to accept the in-flight connections that drain
+// would wait for assumes the process is still in a state that can
+// safely do so, which is exactly what an uncaught exception or an
+// unhandled rejection means is no longer certain.
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] uncaughtException:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] unhandledRejection:', reason);
+  process.exit(1);
+});
