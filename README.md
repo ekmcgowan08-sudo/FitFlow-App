@@ -122,6 +122,27 @@ other (`CORS_ALLOWED_ORIGINS` / `VITE_API_BASE_URL` in
 npm test
 ```
 
+### Operations
+
+`npm run prune-refresh-tokens` deletes `RefreshToken` rows once they're
+well past their own expiry (see `prisma/prune-refresh-tokens.ts` and
+`REFRESH_TOKEN_PRUNE_GRACE_DAYS` in `.env.example`). Nothing in the app
+itself ever deletes a row from this table — login and refresh only ever
+add one, and rotation/logout/reuse-detection only ever mark one
+`revokedAt` — so without this, the table grows by roughly one row per
+login or token refresh, forever. Not part of request-serving code and
+not run automatically; run it on a schedule from whatever your
+deployment already uses for periodic jobs, e.g. a crontab entry running
+it daily:
+
+```
+0 3 * * * cd /path/to/app && npm run prune-refresh-tokens >> /var/log/fitflow-prune.log 2>&1
+```
+
+or the equivalent scheduled/cron job resource in your orchestrator
+(a Kubernetes `CronJob`, an ECS scheduled task, etc.) pointed at the
+same image with the same `DATABASE_URL`.
+
 ## Web Dashboard
 
 `web/` is a separate React + TypeScript + Vite app — the admin/coach

@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts",
+    "prune-refresh-tokens": "ts-node prisma/prune-refresh-tokens.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",

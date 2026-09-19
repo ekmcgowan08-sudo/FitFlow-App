@@ -19,3 +19,14 @@ export const REFRESH_TOKEN_TTL_DAYS = numberEnv(
   process.env.REFRESH_TOKEN_TTL_DAYS,
   30 // 30 days
 );
+
+// Used only by prisma/prune-refresh-tokens.ts, not by request-serving
+// code — how long past its own natural expiry a RefreshToken row (used,
+// revoked, or reuse-detected) is kept before that script deletes it. The
+// row's `expiresAt` doesn't change on early revocation (see
+// auth/token.service.ts), so this is time since the token would have
+// expired anyway, not time since it was revoked — a revoked-on-day-1
+// token from a 30-day TTL still sticks around for the rest of that
+// window, keeping a full audit trail for exactly as long as the token
+// itself would have been usable.
+export const REFRESH_TOKEN_PRUNE_GRACE_DAYS = numberEnv(process.env.REFRESH_TOKEN_PRUNE_GRACE_DAYS, 7);
