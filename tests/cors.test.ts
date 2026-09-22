@@ -17,13 +17,17 @@ describe("CORS", () => {
     expect(res.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
   });
 
-  it("does not grant CORS headers to an unlisted origin", async () => {
+  it("rejects an unlisted origin with a clean 403, not a raw 500", async () => {
     const res = await request(app).get("/healthz").set("Origin", "https://evil.example.com");
 
-    // The request itself still completes (Node doesn't enforce CORS —
-    // only a browser does, by refusing to expose the response to script
-    // when this header is absent), so the meaningful assertion is that
-    // no allow-origin header was granted for this origin.
+    // Node itself doesn't enforce CORS — only a browser does, by
+    // refusing to expose the response to script when this header is
+    // absent — but this server's own `cors()` origin callback (see
+    // src/lib/cors.ts) actively rejects the request server-side with a
+    // ForbiddenError, so both the status and the missing header matter
+    // here, not just the header.
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
     expect(res.headers["access-control-allow-origin"]).toBeUndefined();
   });
 
