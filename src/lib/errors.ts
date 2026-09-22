@@ -82,6 +82,20 @@ export function errorHandler(
     });
   }
 
+  // express.json() (app.ts) throws this SyntaxError itself, before any
+  // route handler runs, whenever a request body isn't valid JSON — a
+  // routine client-input mistake (a hand-typed curl command, a buggy
+  // client), not a server bug. Without this check it falls through to
+  // the generic 500 path below: the wrong status for a malformed
+  // request, and a false-positive "[UNHANDLED_ERROR]" log line on every
+  // occurrence that would pollute error-rate monitoring for something
+  // that isn't actually a server error.
+  if (err instanceof SyntaxError && "type" in err && err.type === "entity.parse.failed") {
+    return res.status(400).json({
+      error: { code: "VALIDATION_ERROR", message: "Request body is not valid JSON" },
+    });
+  }
+
   // Unknown/unexpected errors: log full detail server-side, return a
   // generic 500 to the client. Never leak stack traces or library
   // internals in the response body.
