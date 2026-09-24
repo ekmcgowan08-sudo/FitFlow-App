@@ -83,10 +83,23 @@ export async function authenticate(
     next();
   } catch (err) {
     // Every authentication failure — malformed header, expired token, bad
-    // signature, inactive account — maps to a single, predictable 401
-    // with a generic message. Internal error detail is logged
-    // server-side, never returned to the client.
-    console.error("[auth] token verification failed:", (err as Error).message);
+    // signature, inactive account — maps to the same predictable 401
+    // with a generic message; internal error detail is logged
+    // server-side, never returned to the client. But not every failure
+    // is logged: an expired access token and an outright missing one are
+    // routine, constant, and expected — every active user's access token
+    // expires every ACCESS_TOKEN_TTL_SECONDS (15 minutes by default) and
+    // fails exactly one request here before the client's own transparent
+    // refresh-and-retry (see the web dashboard's src/api/client.ts), and
+    // every unauthenticated visit to a protected route arrives with no
+    // token at all. Logging those at the same severity as a bad
+    // signature or an inactive-account attempt (real anomalies worth
+    // seeing) would make this line, by volume, the single most common
+    // entry in the error log — drowning out the signal it exists for.
+    const isRoutine = err instanceof jwt.TokenExpiredError || !req.headers.authorization?.startsWith("Bearer ");
+    if (!isRoutine) {
+      console.error("[auth] token verification failed:", (err as Error).message);
+    }
     return res.status(401).json({
       error: {
         code: "UNAUTHORIZED",

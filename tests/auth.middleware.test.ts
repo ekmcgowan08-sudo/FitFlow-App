@@ -38,6 +38,16 @@ function makeNext() {
 }
 
 describe("authenticate", () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   it("rejects a request with no Authorization header", async () => {
     const req = makeReq();
     const res = makeRes();
@@ -46,6 +56,28 @@ describe("authenticate", () => {
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({ error: { code: "UNAUTHORIZED", message: "Authentication required" } });
     expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("does not console.error a request with no Authorization header - every unauthenticated visit hits this", async () => {
+    await authenticate(makeReq(), makeRes(), makeNext());
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not console.error an expired token - every active user's token does this every ACCESS_TOKEN_TTL_SECONDS", async () => {
+    const expired = signToken({}, { expiresIn: -10 });
+    await authenticate(makeReq({ authorization: `Bearer ${expired}` }), makeRes(), makeNext());
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it("still console.errors a bad-signature token - a real anomaly, not routine expiry", async () => {
+    const badToken = jwt.sign({ email: "athlete@example.com", jti: "jti-1" }, "wrong-secret", {
+      subject: "user-1",
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+      expiresIn: 900,
+    });
+    await authenticate(makeReq({ authorization: `Bearer ${badToken}` }), makeRes(), makeNext());
+    expect(consoleErrorSpy).toHaveBeenCalled();
   });
 
   it("rejects a malformed Authorization header (not 'Bearer <token>')", async () => {
